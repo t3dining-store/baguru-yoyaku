@@ -69,14 +69,15 @@
 
   /* バグる Owner・バグる Staff（フォルダーアプリ）から開いたとき（アドレスに ?from=owner）だけ、上の帯と合言葉の画面に「ホーム」を出す。
      印は sessionStorage に残す（更新・合言葉の画面のあとも出し続ける）。戻り先は、そのタブの控え bg.owner、無ければ端末に残る bg.hub（Owner・Staff が開いたときに入れる。同じ t3dining.github.io なので読める） */
-  var OWNER_HOME = 'https://t3dining.github.io/baguru-owner/';
+  // ★2026-11-05 から、お店用のアプリは t3dining-store に引っ越した（計画書 バグる/お店用アプリの引っ越し.md）。Owner・Staff も同じ場所にあるので、bg.owner・bg.hub が読める
+  var OWNER_HOME = 'https://t3dining-store.github.io/baguru-owner/';
   function sget(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
   if (/[?&]from=owner(&|$)/.test(location.search)) { try { sessionStorage.setItem('baguru.yoyaku.owner', '1'); } catch (e) {} }
   if (sget('baguru.yoyaku.owner') === '1') {
     var hub = function () { try { return localStorage.getItem('bg.hub'); } catch (e) { return null; } };
     // バグるStaff から開いたときは、アドレスの印 hub=staff を見て必ず Staff に戻す（控えが消える・Owner のものになっていると Owner へ落ちるため。2026-11-02 ko-dai さんの報告）。
     // ★逆向き（印が無ければ Owner に戻す）は入れない。印の無い古いアドレスが開いたままの端末で、Staff の社員が Owner に飛ぶ。staff を含む戻り先は、手元の ?test のアドレスなので残す
-    var STAFF_HOME = 'https://t3dining.github.io/baguru-staff/';
+    var STAFF_HOME = 'https://t3dining-store.github.io/baguru-staff/';
     var goHome = function () {
       var to = sget('bg.owner') || hub() || '';
       if (/[?&]hub=staff(&|$)/.test(location.search) && !/staff/i.test(to)) to = STAFF_HOME;

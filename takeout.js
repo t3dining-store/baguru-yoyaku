@@ -13,7 +13,9 @@
   var LABEL = { request: '申請中', new: '受付待ち', accepted: '調理中', ready: 'できあがり', done: 'お渡し済み', canceled: '取り消し', declined: 'お断り' };
   var LIVE = { request: true, new: true, accepted: true, ready: true };
   // 操作する画面（バグるOrder受付）。この Mac の確認用の画面では、同じフォルダの Order受付
-  var ORDER_APP = location.hostname === 't3dining.github.io' ? 'https://t3dining.github.io/baguru-app/order.html' : '../../バグるOrder受付/order.html';
+  //   ★2026-11-05 から、Order受付も予約ボードも t3dining-store に引っ越した（同じ場所なので、合言葉は1回入れれば両方で使える）
+  var ON_WEB = /\.github\.io$/.test(location.hostname);   // 公開先（t3dining-store。前の場所 t3dining のときも）
+  var ORDER_APP = ON_WEB ? 'https://t3dining-store.github.io/baguru-order/order.html' : '../../バグるOrder受付/order.html';
   /** フォルダーアプリから開いたときは、アプリの外へ出ないよう同じ窓で開き、戻り先の印を渡す。お店のタブレットは今までどおり別の窓 */
   function orderLink() {
     var inApp = false;
@@ -29,8 +31,8 @@
   var freeMin = function () { return rule('deliveryFreeMin', 10); };
   (function () {
     var s = document.createElement('script');
-    // 公開先では店舗アプリの公開先から、この Mac の確認用の画面では、同じフォルダの店舗アプリから
-    s.src = location.hostname === 't3dining.github.io' ? 'https://t3dining.github.io/baguru-app/js/data.js?t=' + Math.floor(Date.now() / 3600000) : '../../js/data.js';
+    // 公開先では店舗アプリ（公式アプリ。引っ越さない t3dining のまま）の公開先から、この Mac の確認用の画面では、同じフォルダの店舗アプリから
+    s.src = ON_WEB ? 'https://t3dining.github.io/baguru-app/js/data.js?t=' + Math.floor(Date.now() / 3600000) : '../../js/data.js';
     s.onload = function () { render(); };
     document.head.appendChild(s);
   })();

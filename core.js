@@ -13,7 +13,7 @@
   var D = window.D = { A: A, esc: A.esc, views: {} };
   var esc = A.esc;
   var $ = D.$ = function (id) { return document.getElementById(id); };
-  // ★pin のキーは、バグるOrder受付も読み書きする（同じ t3dining.github.io なので、どちらかで1回入れれば両方で使える）。名前を変えるときは Order受付にも知らせる
+  // ★pin のキーは、バグるOrder受付も読み書きする（同じ t3dining-store.github.io なので、どちらかで1回入れれば両方で使える。2026-11-05 の引っ越しから）。名前を変えるときは Order受付にも知らせる
   var KEY = D.KEY = { pin: 'baguru.daicho.pin', seen: 'baguru.daicho.seen', sound: 'baguru.daicho.sound', shell: 'baguru.daicho.shell' };
   var POLL_MS = 3000;      // 変わったかを聞く間かく（2026-11-02c）
   var FULL_MS = 60000;     // 変わっていなくても、念のため読み直す間かく（シートを手で直したとき）
