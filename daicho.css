@@ -412,6 +412,7 @@ dl.conf dd{margin:0; font-weight:700}
 .ft-next.late{background:#e0301e; border-color:#e0301e; color:#fff}   /* 即予約で、来店時刻を過ぎた */
 .qsw{margin-left:auto; border:2px solid #b9ad9f; background:#fff; color:#7a7069; border-radius:999px; padding:4px 14px; font-weight:900; font-size:14px; min-height:34px; cursor:pointer}
 .qsw.on{background:#b5661c; border-color:#b5661c; color:#fff}
+.qsw.wait{opacity:.7; pointer-events:none}   /* 受け口に送っているあいだ */
 .ft-next::after{content:""; position:absolute; left:50%; bottom:-7px; margin-left:-6px; border:6px solid transparent; border-top-color:inherit; border-bottom:0}
 .floor-side{display:flex; flex-direction:column; border-left:1px solid var(--line); background:#fff; min-height:0}
 .tabs2{display:flex; border-bottom:1px solid var(--line)}

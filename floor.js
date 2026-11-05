@@ -28,7 +28,7 @@
     $('floor-tools').innerHTML = '<b>' + esc(D.ymdJp(today)) + '</b><span class="muted">今日の席の様子</span>'
       + '<span class="legend"><i class="lg free"></i>空き<i class="lg s-in"></i>着席中<i class="lg soon"></i>残りわずか<i class="lg over"></i>確保時間を過ぎた</span>'
       // 即予約のスイッチ（2026-11-05 から。受け口のタブ「設定」の「即予約を受け付ける」と同じ）
-      + '<button type="button" class="qsw' + (st.conf.quick ? ' on' : '') + '" data-quick>' + (st.conf.quick ? '即予約：受付中' : '即予約：止めている') + '</button>';
+      + quickButton();
     var maxX = 0, maxY = 0;
     tables.forEach(function (t) { maxX = Math.max(maxX, t.x + t.w); maxY = Math.max(maxY, t.y + t.h); });
     var cw = maxX + 40, ch = maxY + 60;
@@ -213,17 +213,29 @@
   window.addEventListener('resize', function () { if (st.view === 'floor' && st.today) render(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (st.view === 'floor' && st.today) render(); });   // 数字の字（Oswald）が届いたら測り直す
 
-  /** 即予約を受ける／止める。始めるときだけ確かめる */
+  /** 即予約を受ける／止める。★2026-11-06 から、始めるときも止めるときも確かめる（ko-dai さんの指示）。
+   *  ボタンは確かめたらすぐ切り替えて見せ（受け口の返事を待たない。ko-dai さんの「切り替わりが遅い」）、受け口が断ったら元に戻す */
+  var quickWant = null;   // 送っているあいだの、切り替えたい側（読み直しで前の様子に戻って見えないように）
+  function quickButton() {
+    var on = quickWant !== null ? quickWant : !!st.conf.quick;
+    var label = quickWant === null ? (on ? '即予約：受付中' : '即予約：止めている') : (on ? '即予約：受け始めています…' : '即予約：止めています…');
+    return '<button type="button" class="qsw' + (on ? ' on' : '') + (quickWant !== null ? ' wait' : '') + '" data-quick>' + label + '</button>';
+  }
   function toggleQuick() {
+    if (quickWant !== null) return;
     var on = !st.conf.quick;
     var go = function () {
+      quickWant = on; render();   // すぐ切り替えて見せる
       return D.post({ action: 'setQuick', accepting: on }).then(function (res) {
-        st.conf.quick = res.quick === true; render();
-        D.toast(st.conf.quick ? '即予約を受け始めました（15分以内に来店するお客さまの予約を、すぐ確定で受けます）' : '即予約を止めました');
-      }).catch(function (e) { D.toast('変えられませんでした：' + esc(D.errText(e)), { warn: true }); });
+        st.conf.quick = res.quick === true;
+        D.toast(st.conf.quick ? '即予約を受け始めました（15分以内に来店するお客さまの予約を、すぐ確定で受けます）' : '即予約を止めました（お客さまの画面から「今すぐ行く」が消えます）');
+      }).catch(function (e) {
+        D.toast('切り替えられませんでした：' + esc(D.errText(e)), { warn: true });
+      }).then(function () { quickWant = null; render(); });
     };
-    if (!on) return go();
-    D.ask({ title: '即予約を受け始めます', text: 'ホームページとアプリで、15分以内に来店するお客さまの予約を、すぐ確定で受けます。席は自動で入ります（あとから動かせます）。忙しいときは、ここでいつでも止められます。', ok: '受け始める' })
+    D.ask(on
+      ? { title: '即予約を受け始めますか？', text: 'ホームページとアプリで、15分以内に来店するお客さまの予約を、すぐ確定で受けます。席は自動で入ります（あとから動かせます）。忙しいときは、ここでいつでも止められます。', ok: '受け始める' }
+      : { title: '即予約を止めますか？', text: 'お客さまのアプリとホームページから「今すぐ行く」が消え、即予約を受けなくなります（テスト用アカウントでも試せなくなります）。もう入っている即予約は、そのまま残ります。', ok: '止める' })
       .then(function (y) { if (y) go(); });
   }
 
