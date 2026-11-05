@@ -359,7 +359,7 @@
     if (!n.length) { bar.hidden = true; qtold = 0; return; }
     qtold = n.length;
     var r = n[0];
-    $('quickbar-text').textContent = '★即予約が入りました：' + r.start + 'までに来店 ' + r.people + '名 ' + D.name(r) + ' 様（' + (r.tables.length ? D.tableNames(r.tables) : '席なし') + '）' + (n.length > 1 ? ' 他' + (n.length - 1) + '件' : '');
+    $('quickbar-text').textContent = (r.keywords.indexOf('テスト') >= 0 ? '★【テスト】' : '★') + '即予約が入りました：' + r.start + 'までに来店 ' + r.people + '名 ' + D.name(r) + ' 様（' + (r.tables.length ? D.tableNames(r.tables) : '席なし') + '）' + (n.length > 1 ? ' 他' + (n.length - 1) + '件' : '');
     bar.hidden = false;
   }
   D.checkQuick = checkQuick;
@@ -479,6 +479,7 @@
     var h = '';
     if (r.cust && r.cust.caution) h += '<i class="ic ic-warn" title="要確認">！</i>';
     if (D.isQuick(r)) h += '<i class="ic ic-quick" title="即予約（15分以内に来店）">即</i>';
+    if (D.isQuick(r) && r.keywords.indexOf('テスト') >= 0) h += '<i class="ic ic-warn" title="テスト用アカウントからの即予約（試し。確かめたら取り消す）">試</i>';   // 2026-11-06 から
     if (D.quickLate(r)) h += '<i class="ic ic-warn" title="来店時刻を過ぎています（取り消しはお店が決める）">遅</i>';
     if (r.route === 'ホームページ') h += '<i class="ic ic-web" title="ホームページから">HP</i>';
     else if (r.route === 'アプリ') h += '<i class="ic ic-web" title="お客さまのアプリから">アプリ</i>';
