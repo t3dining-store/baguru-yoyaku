@@ -174,7 +174,6 @@
       syncText('最終更新 ' + D.clock(r.now), false);
       D.refresh();
       checkNew();
-      checkQuick();
       if (D.checkOrders) D.checkOrders();
       if (firstTime) D.show(st.view);
       // 「設定」は開いたときだけ描くので、先に覚えていた中身で描いた分（担当者の名前が入っていない）を描き直す
@@ -342,33 +341,30 @@
   }
   D.checkNew = checkNew;
 
-  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯。★2026-11-06 から音は鳴らさない）。「見た」を押すまで出す
-     ★2026-11-06 から、どこか1台で「見た」を押せば、予約ボードと Order受付の全部の端末で止まる（受け口の quickSeen。ko-dai さんが選んだ）。
-       受け口が前の版のときは、今までどおり端末ごと ---------- */
-  var QSEEN = 'baguru.daicho.qseen', qtold = 0;
-  function qseen() { try { return JSON.parse(get(QSEEN) || '[]'); } catch (e) { return []; } }
-  function quickNew() {
-    if (!st.today) return [];
-    var seen = qseen().concat(st.quickSeen || []);
-    return D.rowsOn(st.today).filter(function (r) { return D.isQuick(r) && r.status === ST.WAIT && seen.indexOf(r.id) < 0; })
-      .sort(function (a, b) { return a.start.localeCompare(b.start); });
-  }
-  function checkQuick() {
-    var n = quickNew(), bar = $('quickbar');
-    if (!bar) return;
-    if (!n.length) { bar.hidden = true; qtold = 0; return; }
-    qtold = n.length;
-    var r = n[0];
-    $('quickbar-text').textContent = (r.keywords.indexOf('テスト') >= 0 ? '★【テスト】' : '★') + '即予約が入りました：' + r.start + 'までに来店 ' + r.people + '名 ' + D.name(r) + ' 様（' + (r.tables.length ? D.tableNames(r.tables) : '席なし') + '）' + (n.length > 1 ? ' 他' + (n.length - 1) + '件' : '');
-    bar.hidden = false;
-  }
-  D.checkQuick = checkQuick;
-  D.markQuickSeen = function () {
-    var ids = quickNew().map(function (r) { return r.id; });
-    var today = D.rowsOn(st.today).map(function (r) { return r.id; });
-    var keep = qseen().filter(function (id) { return today.indexOf(id) >= 0; }).concat(ids);   // 今日の分だけ覚える（すぐ消すため・受け口が前の版のとき）
-    set(QSEEN, JSON.stringify(keep)); qtold = 0; checkQuick();
-    if (ids.length) D.post({ action: 'quickSeen', ids: ids }).then(function (res) { if (res && Array.isArray(res.quickSeen)) st.quickSeen = res.quickSeen; }).catch(function () {});   // ほかの端末と Order受付も止める
+  /* ---------- 即予約：★2026-11-06 から、予約ボードには帯も「見た」も出さない（ko-dai さんの指示「即予約の見たボタンを予約ボードでは出さず、
+     即予約の管理は全てバグるOrder受付アプリからやるようにしてください」）。「確認」は Order受付で押す（受け口の quickSeen）。
+     Order受付で確認したあと、今日の予約の欄に「席を変える」を出す（floor.js。D.quickConfirmed） ---------- */
+  /** Order受付で「確認」を押した即予約（受け口の quickSeen にある、今日の来店待ち） */
+  D.quickConfirmed = function (r) { return D.isQuick(r) && r.status === ST.WAIT && (st.quickSeen || []).indexOf(r.id) >= 0; };
+  /** 即予約の席だけを変える窓（2026-11-06 から。テーブル管理の今日の予約の「席を変える」） */
+  D.changeTables = function (r) {
+    var m = D.modal('<h2>席を変えます</h2>'
+      + '<p class="m-text">' + esc(r.start + 'までに来店　' + r.people + '名　' + D.name(r) + ' 様') + '</p>'
+      + '<p class="m-sub">席を選んでください（いまの席：' + esc(r.tables.length ? D.tableNames(r.tables) : '席なし') + '）</p><div id="ct-tables"></div>'
+      + '<p class="err" id="ct-err" hidden></p>'
+      + '<div class="m-acts"><button type="button" class="btn" data-a="no">やめる</button><button type="button" class="btn ok" data-a="yes">この席にする</button></div>');
+    var chooser = D.tableChooser(m.querySelector('#ct-tables'), { date: r.date, start: r.start, keep: r.keep, people: r.people, selected: r.tables, except: r.id });
+    m.onclick = function (e) {
+      var b = e.target.closest('[data-a]');
+      if (!b) return;
+      if (b.dataset.a === 'no') return D.closeModal();
+      var tables = chooser.value();
+      if (!tables.length) { var er = m.querySelector('#ct-err'); er.textContent = '席を選んでください。'; er.hidden = false; return; }
+      if (tables.join() === r.tables.join()) return D.closeModal();
+      var a = D.toMin(r.start), seen = D.clashes(r.date, tables, a, a + r.keep, r.id).length > 0;   // しま模様の席を分かったうえで選んだときは重ねて入れる
+      D.closeModal();
+      D.save(r, { tables: tables }, D.name(r) + ' 様の席を ' + D.tableNames(tables) + ' にしました', seen);
+    };
   };
   D.markSeen = function () {
     st.pending.forEach(function (r) { if (r.createdAt > st.seen) st.seen = r.createdAt; });

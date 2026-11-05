@@ -36,7 +36,6 @@
   $('d-input').addEventListener('change', function () { if (this.value) D.goDate(this.value); });
   $('b-add').addEventListener('click', function () { D.closeNumpad(); D.openRegister({ date: st.view === 'schedule' ? st.date : st.today }); });
   $('newbar-go').addEventListener('click', function () { D.show('requests'); });
-  $('quickbar-go').addEventListener('click', function () { D.markQuickSeen(); if (st.view !== 'floor') D.show('floor'); });
 
   /* 音：2026-11-06 から、予約ボードは音を鳴らさない（ko-dai さんの指示）。「音 オン／オフ」のボタンは外した */
   /* 更新（上の帯の右）：ページごと読み直す（公開し直した新しい画面も、いまの予約も入る。合言葉はそのまま）。

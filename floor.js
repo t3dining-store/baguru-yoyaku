@@ -149,7 +149,9 @@
       var items = shown.map(function (r) {
         return { t: r.start, html: '<button type="button" class="tl" data-id="' + esc(r.id) + '">' + D.statusBadge(r.status)
           + '<span class="tl-name">' + esc(D.name(r)) + (r.name ? ' 様' : '') + '　' + r.people + '名 ' + D.icons(r) + '</span>'
-          + '<span class="tl-sub">' + esc(r.start + '〜' + D.hm(D.span(r)[1])) + '　' + esc(r.tables.length ? D.tableNames(r.tables) : '未割り当て') + '</span></button>' };
+          + '<span class="tl-sub">' + esc(r.start + '〜' + D.hm(D.span(r)[1])) + '　' + esc(r.tables.length ? D.tableNames(r.tables) : '未割り当て') + '</span></button>'
+          // Order受付で「確認」を押した即予約には、席だけを変えるボタン（2026-11-06 から。ko-dai さんの指示）
+          + (D.quickConfirmed(r) ? '<button type="button" class="btn small tl-seat" data-seat="' + esc(r.id) + '">席を変える</button>' : '') };
       }).concat(orders.filter(function (o) { return !(side.noCame && o.status === 'done'); }).map(function (o) { return { t: D.orderTime(o), html: D.orderLine(o) }; }));
       items.sort(function (a, b) { return a.t < b.t ? -1 : a.t > b.t ? 1 : 0; });
       h += items.length ? items.map(function (x) {
@@ -177,6 +179,8 @@
     if (e.target.closest('[data-quick]')) return toggleQuick();
     var tab = e.target.closest('[data-tab]');
     if (tab) { side.tab = tab.dataset.tab; return render(); }
+    var seat = e.target.closest('[data-seat]');
+    if (seat) { var sr = D.row(seat.dataset.seat); if (sr) D.changeTables(sr); return; }
     var dt = e.target.closest('.dt');
     if (dt) return D.onBookingClick(e);
     var tl = e.target.closest('.tl');

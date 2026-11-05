@@ -179,7 +179,7 @@ p{margin:0}
 .pop-acts{display:flex; gap:8px}
 /* テイクアウト（takeout.js） */
 .orderbar{background:#1f6f5c}
-.quickbar{background:#b5661c}   /* 即予約が入った（2026-11-05 から） */
+.tl-seat{display:block; margin:-4px 0 8px auto; min-height:34px}   /* 今日の予約：Order受付で確認した即予約の「席を変える」（2026-11-06 から） */
 .to-tools{display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-bottom:12px}
 .to-tools .btn{margin-left:auto; text-decoration:none}
 .to-state{display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:4px 14px; border-radius:18px; background:#efe9e2; color:#4a413a; font-weight:900; font-size:14px}
