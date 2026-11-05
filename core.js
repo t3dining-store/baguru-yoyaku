@@ -353,7 +353,7 @@
       + '<p class="m-sub">席を選んでください（いまの席：' + esc(r.tables.length ? D.tableNames(r.tables) : '席なし') + '）</p><div id="ct-tables"></div>'
       + '<p class="err" id="ct-err" hidden></p>'
       + '<div class="m-acts"><button type="button" class="btn" data-a="no">やめる</button><button type="button" class="btn ok" data-a="yes">この席にする</button></div>');
-    var chooser = D.tableChooser(m.querySelector('#ct-tables'), { date: r.date, start: r.start, keep: r.keep, people: r.people, selected: r.tables, except: r.id });
+    var chooser = D.tableChooser(m.querySelector('#ct-tables'), { date: r.date, start: r.start, keep: r.keep, people: r.people, selected: r.tables, except: r.id, replaceFirst: true });   // 新しい席を押したら、はじめの席は外れる
     m.onclick = function (e) {
       var b = e.target.closest('[data-a]');
       if (!b) return;

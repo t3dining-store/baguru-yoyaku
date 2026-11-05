@@ -10,7 +10,7 @@
      テーブル管理と同じ店の見取り図で、席を押して選ぶ（2026-11-04 ko-dai さんの指示「テーブル管理画面のように店舗の見取り図を」。前は A卓・B卓・C卓 の一覧）。
      しま模様は、その時間に別の予約がある席（選べるが、選ぶと下に注意を出す）。狭い画面では半分より小さくせず、横に動かして見る */
   D.tableChooser = function (box, o) {
-    var sel = (o.selected || []).slice(), keep = o.keep, scale = 0;
+    var sel = (o.selected || []).slice(), keep = o.keep, scale = 0, touched = false;   // touched … 1度でも席を押したか（o.replaceFirst 用）
     function render() {
       var a = D.toMin(o.start), b = a + keep, tables = D.shownTables();
       var x0 = Infinity, y0 = Infinity, x1 = 0, y1 = 0, pad = 14;
@@ -43,7 +43,10 @@
       var c = e.target.closest('[data-t]');
       if (!c) return;
       var id = c.dataset.t, i = sel.indexOf(id);
-      if (i >= 0) sel.splice(i, 1); else sel.push(id);
+      // o.replaceFirst：はじめに選ばれていた席がある窓（席を変える）で、最初にほかの席を押したら、はじめの席は外して、押した席だけにする（2026-11-06 ko-dai さんの指示）。そのあとは今までどおり足す・外す
+      if (o.replaceFirst && !touched && i < 0) sel = [id];
+      else if (i >= 0) sel.splice(i, 1); else sel.push(id);
+      touched = true;
       render();
     };
     render();
