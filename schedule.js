@@ -211,7 +211,7 @@
     var same = patch.start === r.start && patch.keep === r.keep && patch.tables.join() === r.tables.join();
     if (same) return endEdit();
     var cl = patch.tables.length ? D.clashes(r.date, patch.tables, edit.start, edit.start + edit.keep, r.id) : [];
-    var go = function () { endEdit(); D.save(r, patch, '変更しました（' + D.name(r) + ' 様・' + patch.start + '・' + (patch.tables.length ? D.tableNames(patch.tables) : '未割り当て') + '）'); };
+    var go = function () { endEdit(); D.save(r, patch, '変更しました（' + D.name(r) + ' 様・' + patch.start + '・' + (patch.tables.length ? D.tableNames(patch.tables) : '未割り当て') + '）', cl.length > 0); };   // 重なりを見せて「このまま」を押したときは force
     if (!cl.length) return go();
     D.ask({ title: '他の予約と重なります', text: cl.map(function (x) { return D.tableNames(x.tables) + '　' + x.start + '〜 ' + D.name(x) + ' 様'; }).join('／') + '。このまま変更しますか？', ok: 'このまま変更する' })
       .then(function (y) { if (y) go(); });

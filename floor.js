@@ -16,7 +16,8 @@
   function stateOf(t, rows, now) {
     var mine = rows.filter(function (r) { return r.tables.indexOf(t.id) >= 0 && !D.HIDDEN[r.status]; });
     var seated = mine.filter(function (r) { return r.status === ST.IN; })[0] || null;
-    var next = mine.filter(function (r) { return (r.status === ST.WAIT || r.status === ST.REQ) && D.toMin(r.start) + 15 >= now; })
+    // 即予約は、来店時刻を過ぎても、お店が来店か取り消しにするまで出し続ける（2026-11-05 から）
+    var next = mine.filter(function (r) { return (r.status === ST.WAIT || r.status === ST.REQ) && (D.toMin(r.start) + 15 >= now || D.quickLate(r)); })
       .sort(function (a, b) { return a.start.localeCompare(b.start); })[0] || null;
     return { seated: seated, next: next };
   }
@@ -25,7 +26,9 @@
     var today = st.today, now = D.nowMin(), rows = D.rowsOn(today), pk = D.picking();
     var tables = D.shownTables();
     $('floor-tools').innerHTML = '<b>' + esc(D.ymdJp(today)) + '</b><span class="muted">今日の席の様子</span>'
-      + '<span class="legend"><i class="lg free"></i>空き<i class="lg s-in"></i>着席中<i class="lg soon"></i>残りわずか<i class="lg over"></i>確保時間を過ぎた</span>';
+      + '<span class="legend"><i class="lg free"></i>空き<i class="lg s-in"></i>着席中<i class="lg soon"></i>残りわずか<i class="lg over"></i>確保時間を過ぎた</span>'
+      // 即予約のスイッチ（2026-11-05 から。受け口のタブ「設定」の「即予約を受け付ける」と同じ）
+      + '<button type="button" class="qsw' + (st.conf.quick ? ' on' : '') + '" data-quick>' + (st.conf.quick ? '即予約：受付中' : '即予約：止めている') + '</button>';
     var maxX = 0, maxY = 0;
     tables.forEach(function (t) { maxX = Math.max(maxX, t.x + t.w); maxY = Math.max(maxY, t.y + t.h); });
     var cw = maxX + 40, ch = maxY + 60;
@@ -46,8 +49,8 @@
         inner = '<span class="ft-cap">' + t.cap + '名</span>';
       }
       if (s.next) {
-        var soon = D.toMin(s.next.start) - now <= st.conf.keep + 30;
-        bubble += '<span class="ft-next' + (soon ? ' near' : '') + '">次 ' + esc(s.next.start) + '</span>';
+        var soon = D.toMin(s.next.start) - now <= st.conf.keep + 30, q = D.isQuick(s.next), late = D.quickLate(s.next);
+        bubble += '<span class="ft-next' + (late ? ' late' : soon ? ' near' : '') + '">' + (q ? '即 ' : '次 ') + esc(s.next.start) + (late ? ' 遅れ' : '') + '</span>';
       }
       var chairs = Math.max(1, Math.ceil(t.cap / 2)), ch1 = '';
       for (var i = 0; i < chairs; i++) ch1 += '<i></i>';
@@ -171,6 +174,7 @@
   }
 
   box.addEventListener('click', function (e) {
+    if (e.target.closest('[data-quick]')) return toggleQuick();
     var tab = e.target.closest('[data-tab]');
     if (tab) { side.tab = tab.dataset.tab; return render(); }
     var dt = e.target.closest('.dt');
@@ -204,6 +208,20 @@
   setInterval(function () { if (st.view === 'floor' && st.today && !document.hidden) render(); }, 60000);
   window.addEventListener('resize', function () { if (st.view === 'floor' && st.today) render(); });
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { if (st.view === 'floor' && st.today) render(); });   // 数字の字（Oswald）が届いたら測り直す
+
+  /** 即予約を受ける／止める。始めるときだけ確かめる */
+  function toggleQuick() {
+    var on = !st.conf.quick;
+    var go = function () {
+      return D.post({ action: 'setQuick', accepting: on }).then(function (res) {
+        st.conf.quick = res.quick === true; render();
+        D.toast(st.conf.quick ? '即予約を受け始めました（15分以内に来店するお客さまの予約を、すぐ確定で受けます）' : '即予約を止めました');
+      }).catch(function (e) { D.toast('変えられませんでした：' + esc(D.errText(e)), { warn: true }); });
+    };
+    if (!on) return go();
+    D.ask({ title: '即予約を受け始めます', text: 'ホームページとアプリで、15分以内に来店するお客さまの予約を、すぐ確定で受けます。席は自動で入ります（あとから動かせます）。忙しいときは、ここでいつでも止められます。', ok: '受け始める' })
+      .then(function (y) { if (y) go(); });
+  }
 
   D.views.floor = { render: render };
 })();

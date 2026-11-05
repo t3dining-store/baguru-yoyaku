@@ -114,6 +114,7 @@ p{margin:0}
 .ic-warn{background:var(--red); color:#fff}
 .ic-web{background:var(--brass); color:#fff}
 .ic-cele{background:#e7a33a; color:#fff}
+.ic-quick{background:#b5661c; color:#fff}   /* 即予約 */
 .new{background:var(--ember); color:#fff; font-family:var(--en); font-size:12px; letter-spacing:.1em; padding:1px 8px; border-radius:2px}
 .legend{display:inline-flex; align-items:center; gap:4px 10px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
 .lg{display:inline-block; width:14px; height:10px; border-radius:2px; margin-right:-6px; vertical-align:-1px; border:1px solid rgba(0,0,0,.15)}
@@ -179,6 +180,7 @@ p{margin:0}
 .pop-acts{display:flex; gap:8px}
 /* テイクアウト（takeout.js） */
 .orderbar{background:#1f6f5c}
+.quickbar{background:#b5661c}   /* 即予約が入った（2026-11-05 から） */
 .to-tools{display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-bottom:12px}
 .to-tools .btn{margin-left:auto; text-decoration:none}
 .to-state{display:inline-flex; align-items:center; gap:8px; min-height:36px; padding:4px 14px; border-radius:18px; background:#efe9e2; color:#4a413a; font-weight:900; font-size:14px}
@@ -408,6 +410,9 @@ dl.conf dd{margin:0; font-weight:700}
 .ft.seated .ft-box,.ft.soon .ft-box,.ft.over .ft-box{padding:27px 2px 3px; gap:0; justify-content:space-evenly}   /* 上は卓番の下から。字は fitSeated で大きくする */
 .ft-next{position:absolute; top:-34px; left:50%; transform:translateX(-50%); white-space:nowrap; background:#fff; border:2px solid #b9ad9f; color:#7a7069; border-radius:6px; padding:0 10px; font-size:17px; font-weight:700}
 .ft-next.near{border-color:#e0301e; color:#e0301e}
+.ft-next.late{background:#e0301e; border-color:#e0301e; color:#fff}   /* 即予約で、来店時刻を過ぎた */
+.qsw{margin-left:auto; border:2px solid #b9ad9f; background:#fff; color:#7a7069; border-radius:999px; padding:4px 14px; font-weight:900; font-size:14px; min-height:34px; cursor:pointer}
+.qsw.on{background:#b5661c; border-color:#b5661c; color:#fff}
 .ft-next::after{content:""; position:absolute; left:50%; bottom:-7px; margin-left:-6px; border:6px solid transparent; border-top-color:inherit; border-bottom:0}
 .floor-side{display:flex; flex-direction:column; border-left:1px solid var(--line); background:#fff; min-height:0}
 .tabs2{display:flex; border-bottom:1px solid var(--line)}

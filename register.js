@@ -159,8 +159,8 @@
     var now = D.nowMin(), start = D.hm(now - now % 5);
     var using = tables.length ? D.clashes(st.today, tables, now, now + 1, '').filter(function (r) { return r.status === ST.IN; }) : [];
     var go = function () {
-      return D.create({ date: st.today, start: start, people: people, tables: tables, route: '直接来店', status: ST.IN, name: '', keep: st.conf.keep }, D.A.rid())
-        .then(function (row) { D.toast('直接来店を入れました（' + esc(tables.length ? D.tableNames(tables) : '席なし') + '・' + people + '名）'); return row; })
+      return D.create({ date: st.today, start: start, people: people, tables: tables, route: '直接来店', status: ST.IN, name: '', keep: st.conf.keep }, D.A.rid(), using.length > 0)
+        .then(function (row) { if (row) D.toast('直接来店を入れました（' + esc(tables.length ? D.tableNames(tables) : '席なし') + '・' + people + '名）'); return row; })
         .catch(function (e) { D.toast('入れられませんでした：' + esc(D.errText(e)), { warn: true }); });
     };
     if (!using.length) return go();
@@ -381,9 +381,17 @@
     var data = { date: f.date, start: f.start, keep: f.keep, people: f.people, tables: f.tables, name: f.name, kana: f.kana, tel: f.tel,
       email: f.email, route: f.route, keywords: f.keywords, memo: f.memo, dessert: f.dessert, plateMsg: f.dessert ? f.plateMsg : '', status: f.status, cid: f.cid, staff: needStaff() ? f.staff : '' };
     if (!f.cid && !f.noCust) delete data.cid;   // 指定が無ければ送らない（受け口が電話番号で顧客台帳に結びつける）
-    var p = f.id
-      ? D.post({ action: 'save', row: Object.assign({ id: f.id }, data), expect: f.expect })
-      : D.post({ action: 'save', row: data, rid: rid });
+    // 確認の段で席の重なりを見せたうえで押したときは、重ねて入れる（force）。見えていなかった重なり（ほかの端末・即予約）は、受け口が table_taken で知らせる
+    var a0 = D.toMin(f.start), seen = f.tables.length && D.clashes(f.date, f.tables, a0, a0 + f.keep, f.id).length > 0;
+    var send = function (force) {
+      return f.id
+        ? D.post({ action: 'save', row: Object.assign({ id: f.id }, data), expect: f.expect, force: force })
+        : D.post({ action: 'save', row: data, rid: rid, force: force });
+    };
+    var p = send(seen).catch(function (e) {
+      if (e.code !== 'table_taken' || !e.data || !e.data.taken) throw e;
+      return D.askTaken(e.data.taken).then(function (y) { if (y) return send(true); var x = new Error('table_taken'); x.code = 'table_taken_stop'; throw x; });
+    });
     var isNew = !f.id;
     p.then(function (res) {
       D.put(res.row);
@@ -394,6 +402,7 @@
       D.openBooking(res.row.id);
     }).catch(function (e) {
       btn.disabled = false; btn.textContent = f && f.id ? 'この内容で変更する' : 'この内容で登録する';
+      if (e.code === 'table_taken_stop') { showErr('同じ席に、先に予約が入っていました。「戻って直す」で席を選び直してください。'); return; }
       if (e.code === 'conflict') { if (e.data && e.data.row) D.put(e.data.row); showErr('他の端末で先に変わっていました。いったん閉じて、もう一度「変更する」から開いてください。'); return; }
       showErr('登録できませんでした：' + D.errText(e));
     });

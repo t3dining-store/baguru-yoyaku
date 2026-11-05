@@ -38,6 +38,7 @@
   $('d-input').addEventListener('change', function () { if (this.value) D.goDate(this.value); });
   $('b-add').addEventListener('click', function () { D.closeNumpad(); D.openRegister({ date: st.view === 'schedule' ? st.date : st.today }); });
   $('newbar-go').addEventListener('click', function () { D.show('requests'); });
+  $('quickbar-go').addEventListener('click', function () { D.markQuickSeen(); if (st.view !== 'floor') D.show('floor'); });
 
   /* 音（ブラウザの決まりで、一度押さないと鳴らない） */
   function paintSound() {

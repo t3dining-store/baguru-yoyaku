@@ -87,6 +87,10 @@
   D.name = function (r) { return D.kata(r.kana).trim() || r.name || (r.route === '直接来店' ? '直接来店' : '（お名前なし）'); };
   D.isPhone = function () { return window.matchMedia('(max-width: 760px)').matches; };
   /** その席・その時間にかかる、ほかの予約 */
+  /** 即予約（15分以内に来店。2026-11-05 から）。受け口がキーワード「即予約」を付ける */
+  D.isQuick = function (r) { return !!r && Array.isArray(r.keywords) && r.keywords.indexOf('即予約') >= 0; };
+  /** 即予約で、来店時刻を過ぎてもまだ来ていない（今日の「来店待ち」だけ） */
+  D.quickLate = function (r) { return D.isQuick(r) && r.status === ST.WAIT && r.date === st.today && D.nowMin() > D.toMin(r.start); };
   D.clashes = function (date, tables, a, b, exceptId) {
     return D.rowsOn(date).filter(function (r) {
       return r.id !== exceptId && D.HOLDS[r.status] && r.tables.some(function (t) { return tables.indexOf(t) >= 0; }) && D.overlaps(r, a, b);
@@ -169,6 +173,7 @@
       syncText('最終更新 ' + D.clock(r.now), false);
       D.refresh();
       checkNew();
+      checkQuick();
       if (D.checkOrders) D.checkOrders();
       if (firstTime) D.show(st.view);
       // 「設定」は開いたときだけ描くので、先に覚えていた中身で描いた分（担当者の名前が入っていない）を描き直す
@@ -247,16 +252,27 @@
   window.addEventListener('online', function () { if (st.pin && st.today) D.load(); });
 
   /** 予約を直す。先に画面を変えてから送る。返すのは新しい予約（だめなら null） */
-  D.save = function (r, patch, okText) {
+  /** 受け口が、同じ席に先に入った予約を見つけたとき（2台・即予約と取り合ったとき。2026-11-05 から）。重ねて入れるなら true */
+  D.askTaken = function (taken) {
+    D.load();
+    var list = taken.map(function (x) { return x.tables.join('・') + '：' + x.start + '〜 ' + (x.name || '直接来店') + ' 様'; }).join('、');
+    return D.ask({ title: '同じ席に、先に予約が入っていました', text: list + '。このまま重ねて入れますか？ 席を選び直すときは「やめる」を押してください。', ok: 'このまま入れる' });
+  };
+  /** 予約を直す。force … 席が重なるのを分かったうえで送る（画面で確かめたあと） */
+  D.save = function (r, patch, okText, force) {
     var old = JSON.parse(JSON.stringify(r));
     var live = st.rows[r.id];
     if (live) { Object.keys(patch).forEach(function (k) { live[k] = patch[k]; }); D.refresh(); }
-    return D.post({ action: 'save', row: Object.assign({ id: r.id }, patch), expect: r.updatedAt }).then(function (res) {
+    return D.post({ action: 'save', row: Object.assign({ id: r.id }, patch), expect: r.updatedAt, force: force === true }).then(function (res) {
       D.put(res.row);
       if (okText) D.toast(esc(okText));
       return res.row;
     }).catch(function (e) {
       if (live) st.rows[r.id] = old;
+      if (e.code === 'table_taken' && e.data && e.data.taken) {
+        D.refresh();
+        return D.askTaken(e.data.taken).then(function (y) { return y ? D.save(r, patch, okText, true) : null; });
+      }
       if (e.code === 'conflict' && e.data && e.data.row) D.put(e.data.row);
       D.refresh();
       D.toast(esc((e.code === 'conflict' ? '' : '変えられませんでした：') + D.errText(e)), { warn: true });
@@ -265,8 +281,11 @@
     });
   };
   /** 予約を足す。rid は送り直しで2つにならないための印 */
-  D.create = function (data, rid) {
-    return D.post({ action: 'save', row: data, rid: rid }).then(function (res) { D.put(res.row); return res.row; });
+  D.create = function (data, rid, force) {
+    return D.post({ action: 'save', row: data, rid: rid, force: force === true }).then(function (res) { D.put(res.row); return res.row; }).catch(function (e) {
+      if (e.code === 'table_taken' && e.data && e.data.taken) return D.askTaken(e.data.taken).then(function (y) { return y ? D.create(data, rid, true) : null; });
+      throw e;
+    });
   };
   /** 受け口から返ってきた予約を、手元の集まりに入れる */
   D.put = function (row) {
@@ -345,6 +364,33 @@
     $('newbar').hidden = false;
   }
   D.checkNew = checkNew;
+
+  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯・音）。端末ごとに「見た」を押すまで出す ---------- */
+  var QSEEN = 'baguru.daicho.qseen', qtold = 0;
+  function qseen() { try { return JSON.parse(get(QSEEN) || '[]'); } catch (e) { return []; } }
+  function quickNew() {
+    if (!st.today) return [];
+    var seen = qseen();
+    return D.rowsOn(st.today).filter(function (r) { return D.isQuick(r) && r.status === ST.WAIT && seen.indexOf(r.id) < 0; })
+      .sort(function (a, b) { return a.start.localeCompare(b.start); });
+  }
+  function checkQuick() {
+    var n = quickNew(), bar = $('quickbar');
+    if (!bar) return;
+    if (!n.length) { bar.hidden = true; qtold = 0; return; }
+    if (st.sound && n.length > qtold) D.beep();
+    qtold = n.length;
+    var r = n[0];
+    $('quickbar-text').textContent = '★即予約が入りました：' + r.start + 'までに来店 ' + r.people + '名 ' + D.name(r) + ' 様（' + (r.tables.length ? D.tableNames(r.tables) : '席なし') + '）' + (n.length > 1 ? ' 他' + (n.length - 1) + '件' : '');
+    bar.hidden = false;
+  }
+  D.checkQuick = checkQuick;
+  D.markQuickSeen = function () {
+    var today = D.rowsOn(st.today).map(function (r) { return r.id; });
+    var keep = qseen().filter(function (id) { return today.indexOf(id) >= 0; }).concat(quickNew().map(function (r) { return r.id; }));   // 今日の分だけ覚える
+    set(QSEEN, JSON.stringify(keep)); qtold = 0; checkQuick();
+  };
+  setInterval(function () { if (st.today && !st.warm && st.sound && quickNew().length) D.beep(); }, 20000);   // 「見た」を押すまで20秒ごと（音 オンの端末だけ）
   D.markSeen = function () {
     st.pending.forEach(function (r) { if (r.createdAt > st.seen) st.seen = r.createdAt; });
     set(KEY.seen, String(st.seen)); told = 0; checkNew();
@@ -453,6 +499,8 @@
   D.icons = function (r) {
     var h = '';
     if (r.cust && r.cust.caution) h += '<i class="ic ic-warn" title="要確認">！</i>';
+    if (D.isQuick(r)) h += '<i class="ic ic-quick" title="即予約（15分以内に来店）">即</i>';
+    if (D.quickLate(r)) h += '<i class="ic ic-warn" title="来店時刻を過ぎています（取り消しはお店が決める）">遅</i>';
     if (r.route === 'ホームページ') h += '<i class="ic ic-web" title="ホームページから">HP</i>';
     else if (r.route === 'アプリ') h += '<i class="ic ic-web" title="お客さまのアプリから">アプリ</i>';
     if (r.kids || r.keywords.indexOf('お子様連れ') >= 0) h += '<i class="ic" title="お子様連れ">子</i>';
