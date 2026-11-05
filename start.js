@@ -10,7 +10,6 @@
         + '<button type="button" class="more-i" data-go="takeout"><svg class="i"><use href="#i-bag"/></svg>テイクアウト<em class="badge" id="badge-to2"' + (D.st.orders.some(function (o) { return o.status === 'new' || o.status === 'request'; }) ? '' : ' hidden') + '>' + D.st.orders.filter(function (o) { return o.status === 'new' || o.status === 'request'; }).length + '</em></button>'
         + '<button type="button" class="more-i" data-go="customers"><svg class="i"><use href="#i-user"/></svg>顧客台帳</button>'
         + '<button type="button" class="more-i" data-go="settings"><svg class="i"><use href="#i-gear"/></svg>設定</button>'
-        + '<button type="button" class="more-i" data-go="sound"><svg class="i"><use href="#i-bell"/></svg>' + (st.sound ? '音 オン（押すと消す）' : '音 オフ（押すと鳴らす）') + '</button>'
         + '<button type="button" class="more-i" data-go="logout"><svg class="i"><use href="#i-out"/></svg>ログアウト</button>'
         + '<p class="muted">' + esc($('sync').textContent) + '</p></div>';
     }
@@ -21,7 +20,6 @@
   more.addEventListener('click', function (e) {
     var b = e.target.closest('[data-go]');
     if (!b) return;
-    if (b.dataset.go === 'sound') { $('b-sound').click(); return D.views.more.render(); }
     if (b.dataset.go === 'logout') return $('b-logout').click();
     D.show(b.dataset.go);
   });
@@ -40,18 +38,7 @@
   $('newbar-go').addEventListener('click', function () { D.show('requests'); });
   $('quickbar-go').addEventListener('click', function () { D.markQuickSeen(); if (st.view !== 'floor') D.show('floor'); });
 
-  /* 音（ブラウザの決まりで、一度押さないと鳴らない） */
-  function paintSound() {
-    var b = $('b-sound');
-    b.querySelector('span').textContent = st.sound ? '音 オン' : '音 オフ';
-    b.setAttribute('aria-pressed', st.sound ? 'true' : 'false');
-    b.classList.toggle('on', st.sound);
-  }
-  $('b-sound').addEventListener('click', function () {
-    st.sound = !st.sound; D.set(D.KEY.sound, st.sound ? '1' : '0'); paintSound();
-    if (st.sound) D.beep();
-    D.paintSoundGate();
-  });
+  /* 音：2026-11-06 から、予約ボードは音を鳴らさない（ko-dai さんの指示）。「音 オン／オフ」のボタンは外した */
   /* 更新（上の帯の右）：ページごと読み直す（公開し直した新しい画面も、いまの予約も入る。合言葉はそのまま）。
      ホーム画面に置いたときは、ブラウザの読み直しのボタンが無いので */
   $('b-reload').addEventListener('click', function () {
@@ -96,7 +83,6 @@
   /* 合言葉 */
   function showApp() {
     $('login').hidden = true; $('app').hidden = false; $('bnav').hidden = false;
-    paintSound();
     $('sync').textContent = '読み込んでいます…';
     var p = D.load();   // 先に受け口へ頼んでから、返事を待つあいだに席の並びを出す
     D.warmStart();

@@ -62,7 +62,7 @@
       + '<ul class="set-list"><li>ネット予約を受け付ける（する／しない）</li><li>ネット予約（ホームページ・アプリ）で受ける時刻（平日・土日祝）と、その間隔</li><li>ネット予約の1枠で受ける組数・1組の最大人数</li><li>何日先まで・何時間前まで</li><li>営業時間（スケジュールで灰色にする時間）</li><li>新しいリクエストを知らせるメール</li><li>予約経路の選び方</li></ul>'
         + '<p class="muted">★定休日と、臨時の営業・お休みは、T3Works のマネージ（⚙ 設定 → 定休日）で変えます。30分ほどで、予約ボード・ホームページ・お客さまのアプリに入ります。</p></section>'
       + '<section class="set-sec"><h2>この端末</h2><p class="muted">版 ' + esc(st.version || '') + '　最終更新 ' + esc(st.loadedAt ? D.clock(st.loadedAt) : '') + (st.loadMs ? '　読み込み ' + (st.loadMs / 1000).toFixed(1) + '秒' : '') + (st.tickMs ? '　確認 ' + (st.tickMs / 1000).toFixed(1) + '秒' : '') + '</p>'
-      + '<div class="set-acts left"><button type="button" class="btn" data-s="sound">' + (st.sound ? '音 オン（押すと消す）' : '音 オフ（押すと鳴らす）') + '</button><button type="button" class="btn" data-s="logout">ログアウト</button></div></section>';
+      + '<div class="set-acts left"><button type="button" class="btn" data-s="logout">ログアウト</button></div></section>';
   }
 
   function touch() {
@@ -114,7 +114,6 @@
         var c = staffCopy(), who = b.dataset.n;
         return D.ask({ title: who + ' を担当者から外します', text: 'これまでの予約に入っている担当者の名前は、そのまま残ります。', ok: '外す', danger: true })
           .then(function (y) { if (y) { c[b.dataset.g] = c[b.dataset.g].filter(function (n) { return n !== who; }); delete c.partReads[who]; saveStaff(c, who + ' を外しました'); } });
-      case 'sound': D.$('b-sound').click(); return render();
       case 'logout': return D.$('b-logout').click();
     }
   });

@@ -27,7 +27,7 @@
   var st = D.st = {
     pin: get(KEY.pin), today: '', date: '', view: startView(),
     rows: {}, pending: [], web: [], tables: [], conf: {}, days: {},
-    seen: Number(get(KEY.seen) || 0), sound: get(KEY.sound) === '1',
+    seen: Number(get(KEY.seen) || 0), sound: false,   // ★2026-11-06 から、予約ボードはどの予約でも音を鳴らさない（ko-dai さんの指示）。知らせは帯だけ。音は Order受付が鳴らす
     timer: null, busy: false, again: false, panel: null, listRange: null, beat: 0, writing: 0, writes: 0
   };
 
@@ -316,43 +316,19 @@
     }).then(function (v) { return v ? D.save(r, { status: v }, D.name(r) + ' 様を「' + v + '」にしました') : null; });
   };
 
-  /* ---------- 新しいリクエストの知らせ（赤い帯・音） ---------- */
-  var audio = null, told = 0;
-  function audioOn() {
-    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
-    if (audio.state !== 'running' && audio.resume) audio.resume();
-    audio.onstatechange = paintSoundGate;
-  }
-  /** ブラウザの決まりで、開き直すと、画面を1回さわるまで音が鳴らない。「音 オン」のときは、鳴らない間は上の帯で知らせる */
-  function paintSoundGate() { $('soundgate').hidden = !(st.sound && st.today && !(audio && audio.state === 'running')); }
-  D.paintSoundGate = paintSoundGate;
-  ['click', 'touchend'].forEach(function (ev) {
-    document.addEventListener(ev, function () { if (st.sound && !(audio && audio.state === 'running')) { try { audioOn(); } catch (e) {} setTimeout(paintSoundGate, 200); } }, true);
-  });
-  D.beep = function () {
-    try {
-      audioOn();
-      [0, 0.28].forEach(function (t) {
-        var o = audio.createOscillator(), g = audio.createGain();
-        o.type = 'sine'; o.frequency.value = 880;
-        g.gain.setValueAtTime(0.0001, audio.currentTime + t);
-        g.gain.exponentialRampToValueAtTime(0.4, audio.currentTime + t + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + t + 0.22);
-        o.connect(g); g.connect(audio.destination);
-        o.start(audio.currentTime + t); o.stop(audio.currentTime + t + 0.24);
-      });
-    } catch (e) {}
-  };
-  /** 当日のネット予約：承認かお断りをするまで、帯を出したままにして、20秒ごとに音を鳴らす（音 オンの端末だけ） */
+  /* ---------- 新しいリクエストの知らせ（赤い帯）
+     ★2026-11-06 から、予約ボードはどの予約でも音を鳴らさない（ko-dai さんの指示「予約ボードはどの予約も音が鳴らないようにしてください」）。
+       知らせは帯だけ。音の「音 オン／オフ」のボタンも外した。即予約の音は Order受付が鳴らす ---------- */
+  var told = 0;
+  D.beep = function () {};   // 鳴らさない（前の版の呼び出しが残っていても止まらないように）
+  D.paintSoundGate = function () {};
+  /** 当日のネット予約：承認かお断りをするまで、帯を出したままにする */
   function todayReq() { return st.pending.filter(function (r) { return r.date === st.today; }).sort(function (a, b) { return a.start.localeCompare(b.start); }); }
-  setInterval(function () { if (st.today && !st.warm && st.sound && todayReq().length) D.beep(); }, 20000);
 
   function checkNew() {
     var n = st.pending.filter(function (r) { return r.createdAt > st.seen; });
     ['badge-req', 'badge-req2'].forEach(function (id) { var b = $(id); b.textContent = st.pending.length; b.hidden = !st.pending.length; });
-    paintSoundGate();
     var td = todayReq();
-    if (n.length && st.sound && n.length > told) D.beep();
     told = n.length;
     if (td.length) {
       $('newbar-text').textContent = '★当日の予約のリクエストが ' + td.length + '件 あります（' + td[0].start + ' ' + td[0].people + '名' + (td.length > 1 ? ' 他' : '') + '）。承認かお断りをしてください';
@@ -366,7 +342,7 @@
   }
   D.checkNew = checkNew;
 
-  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯・音）。「見た」を押すまで出す
+  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯。★2026-11-06 から音は鳴らさない）。「見た」を押すまで出す
      ★2026-11-06 から、どこか1台で「見た」を押せば、予約ボードと Order受付の全部の端末で止まる（受け口の quickSeen。ko-dai さんが選んだ）。
        受け口が前の版のときは、今までどおり端末ごと ---------- */
   var QSEEN = 'baguru.daicho.qseen', qtold = 0;
@@ -381,7 +357,6 @@
     var n = quickNew(), bar = $('quickbar');
     if (!bar) return;
     if (!n.length) { bar.hidden = true; qtold = 0; return; }
-    if (st.sound && n.length > qtold) D.beep();
     qtold = n.length;
     var r = n[0];
     $('quickbar-text').textContent = '★即予約が入りました：' + r.start + 'までに来店 ' + r.people + '名 ' + D.name(r) + ' 様（' + (r.tables.length ? D.tableNames(r.tables) : '席なし') + '）' + (n.length > 1 ? ' 他' + (n.length - 1) + '件' : '');
@@ -395,7 +370,6 @@
     set(QSEEN, JSON.stringify(keep)); qtold = 0; checkQuick();
     if (ids.length) D.post({ action: 'quickSeen', ids: ids }).then(function (res) { if (res && Array.isArray(res.quickSeen)) st.quickSeen = res.quickSeen; }).catch(function () {});   // ほかの端末と Order受付も止める
   };
-  setInterval(function () { if (st.today && !st.warm && st.sound && quickNew().length) D.beep(); }, 20000);   // 「見た」を押すまで20秒ごと（音 オンの端末だけ）
   D.markSeen = function () {
     st.pending.forEach(function (r) { if (r.createdAt > st.seen) st.seen = r.createdAt; });
     set(KEY.seen, String(st.seen)); told = 0; checkNew();
