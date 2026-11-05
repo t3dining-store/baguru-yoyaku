@@ -160,6 +160,7 @@
       Object.keys(st.rows).forEach(function (id) { var x = st.rows[id]; if (x.date >= r.from && x.date <= r.to) delete st.rows[id]; });
       r.rows.forEach(function (x) { st.rows[x.id] = x; });
       st.pending = r.pending; st.web = r.web; st.tables = r.tables; st.tablesAt = r.tablesAt; st.conf = r.conf;
+      st.quickSeen = Array.isArray(r.quickSeen) ? r.quickSeen : [];   // どこかの端末で「見た」を押した即予約（受け口 2026-11-06a から）
       st.orders = r.orders || [];   // テイクアウトの注文（takeout.js）
       Object.keys(r.days).forEach(function (k) { st.days[k] = r.days[k]; });
       st.loadedAt = r.now;
@@ -365,12 +366,14 @@
   }
   D.checkNew = checkNew;
 
-  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯・音）。端末ごとに「見た」を押すまで出す ---------- */
+  /* ---------- 即予約の知らせ（2026-11-05 から。オレンジの帯・音）。「見た」を押すまで出す
+     ★2026-11-06 から、どこか1台で「見た」を押せば、予約ボードと Order受付の全部の端末で止まる（受け口の quickSeen。ko-dai さんが選んだ）。
+       受け口が前の版のときは、今までどおり端末ごと ---------- */
   var QSEEN = 'baguru.daicho.qseen', qtold = 0;
   function qseen() { try { return JSON.parse(get(QSEEN) || '[]'); } catch (e) { return []; } }
   function quickNew() {
     if (!st.today) return [];
-    var seen = qseen();
+    var seen = qseen().concat(st.quickSeen || []);
     return D.rowsOn(st.today).filter(function (r) { return D.isQuick(r) && r.status === ST.WAIT && seen.indexOf(r.id) < 0; })
       .sort(function (a, b) { return a.start.localeCompare(b.start); });
   }
@@ -386,9 +389,11 @@
   }
   D.checkQuick = checkQuick;
   D.markQuickSeen = function () {
+    var ids = quickNew().map(function (r) { return r.id; });
     var today = D.rowsOn(st.today).map(function (r) { return r.id; });
-    var keep = qseen().filter(function (id) { return today.indexOf(id) >= 0; }).concat(quickNew().map(function (r) { return r.id; }));   // 今日の分だけ覚える
+    var keep = qseen().filter(function (id) { return today.indexOf(id) >= 0; }).concat(ids);   // 今日の分だけ覚える（すぐ消すため・受け口が前の版のとき）
     set(QSEEN, JSON.stringify(keep)); qtold = 0; checkQuick();
+    if (ids.length) D.post({ action: 'quickSeen', ids: ids }).then(function (res) { if (res && Array.isArray(res.quickSeen)) st.quickSeen = res.quickSeen; }).catch(function () {});   // ほかの端末と Order受付も止める
   };
   setInterval(function () { if (st.today && !st.warm && st.sound && quickNew().length) D.beep(); }, 20000);   // 「見た」を押すまで20秒ごと（音 オンの端末だけ）
   D.markSeen = function () {
