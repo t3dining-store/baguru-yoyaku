@@ -41,11 +41,11 @@
   var yen = function (n) { return '¥' + Number(n || 0).toLocaleString('ja-JP'); };
   var msOf = function (o) { return Date.parse(o.pickupAt) || 0; };
   var isReq = function (o) { return o.kind === 'bulk' || o.kind === 'delivery'; };
-  /** 受け付けたが、まだ調理を始める前（受け取りの cookBefore 分前より前）。「できしだい」はいつも調理中 */
+  /** 受け付けたが、まだ調理を始める前（受け取りの cookBefore 分前より前）。「今から受け取る」（asap。前は「できしだい」）はいつも調理中 */
   var booked = function (o, now) { return o.status === 'accepted' && !o.asap && msOf(o) - now > cookBefore() * 60000; };
   function whenText(o) {
     var ms = msOf(o), d = D.ymdOf(ms), t = D.clock(ms);
-    return (d === st.today ? '' : D.md(d) + ' ') + (o.asap ? 'できしだい（' + t + '頃）' : t);
+    return (d === st.today ? '' : D.md(d) + ' ') + (o.asap ? '今から受け取る（' + t + '頃）' : t);
   }
   function untilText(o, now) {
     var min = Math.round((msOf(o) - now) / 60000);
@@ -122,7 +122,7 @@
   $('orderbar-go').addEventListener('click', function () { D.show('takeout'); });
 
   /* ---------- テーブル管理の「今日の予約」に出す分（floor.js） ----------
-     今日受け取る注文（時間を指定した予約注文と「できしだい」。2026-11-02 ユーザーの指示）。申請中は、予約のリクエストと同じく出さない。取り消し・お断りも出さない */
+     今日受け取る注文（時間を指定した予約注文と「今から受け取る」（前は「できしだい」。2026-11-06 に言い方をお客さまのアプリにそろえた）。2026-11-02 ユーザーの指示）。申請中は、予約のリクエストと同じく出さない。取り消し・お断りも出さない */
   var TODAY = { new: true, accepted: true, ready: true, done: true };
   D.todayOrders = function () {
     return st.orders.filter(function (o) { return TODAY[o.status] && msOf(o) && D.ymdOf(msOf(o)) === st.today; });
@@ -131,7 +131,7 @@
   D.orderLine = function (o) {
     return '<button type="button" class="tl tl-order k-' + esc(o.kind) + '" data-order="' + esc(o.id) + '"><span class="tl-head"><span class="to-kind">' + esc(KIND[o.kind] || 'テイクアウト') + '</span><span class="to-st">' + esc(statusLabel(o, Date.now())) + '</span></span>'
       + '<span class="tl-name">' + esc(o.name || '（お名前なし）') + ' 様' + (o.meals ? '　' + esc(mealsOf(o)) : '') + '</span>'
-      + '<span class="tl-sub">' + esc(o.asap ? 'できしだい（' + D.orderTime(o) + '頃）' : D.orderTime(o)) + ' ' + (o.kind === 'delivery' ? 'お届け' : '受け取り') + '　No.' + esc(noOf(o)) + '</span></button>';
+      + '<span class="tl-sub">' + esc(o.asap ? '今から受け取る（' + D.orderTime(o) + '頃）' : D.orderTime(o) + ' ' + (o.kind === 'delivery' ? 'お届け' : '受け取り')) + '　No.' + esc(noOf(o)) + '</span></button>';   // 「今から受け取る」のあとに「受け取り」を重ねない
   };
   /** 注文のところを開く（予約ボードでは見るだけ） */
   D.openOrder = function (id) {
