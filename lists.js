@@ -8,11 +8,27 @@
       + '<span class="lr-st">' + D.statusBadge(r.status) + '<small>' + esc((r.route || '') + (r.staff ? '・' + r.staff : '')) + '</small></span>'
       + '<span class="lr-time">' + (withDate ? '<small>' + esc(D.md(r.date) + '（' + D.wd(r.date) + '）') + '</small>' : '') + '<b>' + esc(r.start) + '</b>〜' + esc(D.hm(D.span(r)[1])) + '</span>'
       + '<span class="lr-who"><b>' + esc(D.name(r)) + (r.name ? ' 様' : '') + '</b>　' + r.people + '名 ' + D.icons(r) + '<small>' + esc(r.tel || '') + '</small></span>'
-      + '<span class="lr-tb">' + esc(r.tables.length ? D.tableNames(r.tables) : '未割り当て') + '</span></button>';
+      + '<span class="lr-tb">' + esc(r.tables.length ? D.tableNames(r.tables) : '未割り当て') + '</span>' + rowInfo(r) + '</button>';
+  }
+  /** 行の下に出す予約の中身（押さなくても見えるように。2026-11-06 から）
+   *  お客さまの情報・キーワード・席の希望・デザートプレート・ご要望（アプリ/ホームページ）・メモ（予約登録の備考） */
+  function rowInfo(r) {
+    var c = r.cust, tags = [];
+    if (c && c.caution) tags.push('<span class="warn">！要確認' + (c.cautionNote ? '：' + esc(c.cautionNote) : '') + '</span>');
+    if (c && c.allergy) tags.push('<span class="warn">苦手・アレルギー：' + esc(c.allergy) + '</span>');
+    if (c && c.anniv) tags.push('<span>記念日：' + esc(c.anniv) + '</span>');
+    if (c && r.route !== '直接来店') tags.push('<span>' + (c.visits ? '来店 ' + c.visits + '回' : '初めて') + '</span>');
+    r.keywords.forEach(function (k) { if (!(k === 'デザートプレート' && r.dessert)) tags.push('<span>' + esc(k) + '</span>'); });   // プレートは下でメッセージと一緒に出す
+    if (r.seat && r.seat !== 'どちらでも') tags.push('<span>' + esc(r.seat) + '希望</span>');
+    if (r.dessert) tags.push('<span class="cele">デザートプレート' + (r.plateMsg ? '「' + esc(r.plateMsg) + '」' : '') + '</span>');
+    var h = (tags.length ? '<span class="lr-tags">' + tags.join('') + '</span>' : '')
+      + (r.note ? '<span class="lr-note"><b>ご要望</b>' + esc(r.note) + '</span>' : '')
+      + (r.memo ? '<span class="lr-note lr-memo"><b>メモ</b>' + esc(r.memo) + '</span>' : '');
+    return h ? '<span class="lr-info">' + h + '</span>' : '';
   }
 
   /* ---------- 予約リスト ---------- */
-  var L = { preset: 'today', from: '', to: '', noCxl: true, status: '' };
+  var L = { preset: 'today', from: '', to: '', noCxl: true, noWalk: true, status: '' };   // 直接来店は、はじめから除く（2026-11-06 から）
   function presetRange(p) {
     var t = st.today, w = D.A.weekday(t);
     switch (p) {
@@ -29,6 +45,7 @@
     st.listRange = { from: rg[0], to: rg[1] };
     var rows = D.rowsBetween(rg[0], rg[1]).filter(function (r) {
       if (L.noCxl && (r.status === ST.CXL || r.status === ST.NOSHOW || r.status === ST.NO)) return false;
+      if (L.noWalk && r.route === '直接来店') return false;
       return !L.status || r.status === L.status;
     });
     var ppl = rows.reduce(function (n, r) { return n + (D.HIDDEN[r.status] ? 0 : r.people); }, 0);
@@ -36,6 +53,7 @@
     var h = '<div class="lst-tools"><div class="segs">' + btn('today', '今日') + btn('tomorrow', '明日') + btn('week', '今週') + btn('next', '来週') + btn('month', '30日') + btn('custom', '期間を選ぶ') + '</div>'
       + (L.preset === 'custom' ? '<div class="lst-range"><input type="date" id="l-from" value="' + rg[0] + '">〜<input type="date" id="l-to" value="' + rg[1] + '"></div>' : '')
       + '<label class="chk"><input type="checkbox" id="l-nocxl"' + (L.noCxl ? ' checked' : '') + '>キャンセルを除く</label>'
+      + '<label class="chk"><input type="checkbox" id="l-nowalk"' + (L.noWalk ? ' checked' : '') + '>直接来店を除く</label>'
       + '<select id="l-status"><option value="">全ての状態</option>' + D.STATUS_LIST().map(function (s) { return '<option' + (L.status === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>'
       + '<span class="lst-count"><b>' + rows.length + '</b>件・<b>' + ppl + '</b>名</span></div>';
     var last = '';
@@ -57,6 +75,7 @@
   $('v-list').addEventListener('change', function (e) {
     var id = e.target.id;
     if (id === 'l-nocxl') L.noCxl = e.target.checked;
+    if (id === 'l-nowalk') L.noWalk = e.target.checked;
     if (id === 'l-status') L.status = e.target.value;
     if (id === 'l-from' || id === 'l-to') {
       L.from = $('l-from').value; L.to = $('l-to').value;
