@@ -38,15 +38,13 @@
       var s = stateOf(t, rows, now), cls = 'ft k-' + (t.kind === 'カウンター' ? 'counter' : 'table'), inner = '', bubble = '';
       if (s.seated) {
         var r = s.seated, since = r.inAt ? Math.round((Date.now() - r.inAt) / 60000) : now - D.toMin(r.start);
-        var left = D.toMin(r.start) + r.keep - now;
         // ★2026-11-06 から、時間がたっても席の色は変えない（緑のまま。ko-dai さんの指示「空席の白と着席中の緑の2種類にして、時間経過による色分けはなくしてください」）。
-        //   前は残り15分でオレンジ（soon）、確保時間を過ぎたら赤（over）。「残り○分」「○分超過」の字は卓番の右に今までどおり出す
+        //   前は残り15分でオレンジ（soon）、確保時間を過ぎたら赤（over）。卓番の右の「残り○分」「○分超過」の字も、同じ日に消した（ko-dai さんの「字も消してください」）
         cls += ' seated' + (D.name(r) === '直接来店' ? ' walk' : '');
         // 着席中の字は、席の大きさに合わせて入るかぎり大きくする（fitSeated。2026-11-04 ko-dai さんの指示「緑の中の文字を最大限大きく」）。
-        // 1行目＝お名前（直接来店は「直接来店」）と座ってからの分、2行目＝人数だけ（2026-11-04 ko-dai さんの指示）。残り・超過（残り15分から）は、卓番の右に出す
+        // 1行目＝お名前（直接来店は「直接来店」）と座ってからの分、2行目＝人数だけ（2026-11-04 ko-dai さんの指示）。（残り・超過の字は 2026-11-06 に消した）
         // 字の大きさ（fitSeated）：直接来店と人数は、席の種類（2名席・4名席・カウンターなど）ごとに同じ大きさ。予約のお名前は1行に収まる大きさ
         inner = '<span class="ft-who"><span class="nm">' + esc(D.name(r)) + '</span><i></i><b>' + since + '</b><small>分</small></span><span class="ft-ppl"><b>' + r.people + '</b><small>名</small></span>';
-        if (left <= 15) bubble += '<span class="ft-left">' + (left < 0 ? (-left) + '分超過' : '残り' + left + '分') + '</span>';
       } else {
         inner = '<span class="ft-cap">' + t.cap + '名</span>';
       }
@@ -62,7 +60,6 @@
     }).join('');
     area.innerHTML = '<div class="floor-scale" style="width:' + (cw * scale) + 'px;height:' + (ch * scale) + 'px"><div class="floor-canvas" style="width:' + cw + 'px;height:' + ch + 'px;transform:scale(' + scale + ')">' + tiles + '</div></div>';
     fitSeated(area, tables);
-    fitLeft(area);
     renderSide(rows);
   }
 
@@ -127,16 +124,6 @@
     var s = size(lo), top = s[0] * FIT_RATIO;
     return s.map(function (px) { return Math.floor(Math.min(px, top) * 2) / 2; });
   }
-  function fitLeft(area) {
-    // 卓番の右の「残り○分」「○分超過」は、卓番と重ならない幅に収める
-    [].slice.call(area.querySelectorAll('.ft-left')).forEach(function (el) {
-      var tile = el.parentNode, nm = tile.querySelector('.ft-name');
-      if (!nm || !el.offsetWidth) return;
-      var room = tile.clientWidth - (nm.offsetLeft + nm.offsetWidth) - 6 - (tile.clientWidth - el.offsetLeft - el.offsetWidth);
-      if (el.offsetWidth > room && room > 0) el.style.fontSize = Math.floor(parseFloat(getComputedStyle(el).fontSize) * room / el.offsetWidth * 2) / 2 + 'px';
-    });
-  }
-
   function renderSide(rows) {
     var list = rows.filter(function (r) { return !D.HIDDEN[r.status] && r.status !== ST.REQ; });
     var shown = list.filter(function (r) { return !(side.noWalk && r.route === '直接来店') && !(side.noCame && (r.status === ST.IN || r.status === ST.OUT)); });
