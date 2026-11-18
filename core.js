@@ -38,11 +38,26 @@
     try { var v = sessionStorage.getItem('baguru.yoyaku.view'); sessionStorage.removeItem('baguru.yoyaku.view'); return v || 'floor'; } catch (e) { return 'floor'; }
   }
   // 開いたままの予約ボードに通知から戻ったとき（アドレスの # だけが変わる）も「予約受付」へ
+  function showRequests() { if (st.today) D.show('requests'); else st.view = 'requests'; }
   window.addEventListener('hashchange', function () {
     if (location.hash !== '#requests') return;
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
-    if (st.today) D.show('requests'); else st.view = 'requests';
+    showRequests();
   });
+  // 開いたままの予約ボードは、Owner のサービスワーカーがアドレスを替えられない（自分の受け持ちの窓だけ）ので、知らせで受ける
+  //（バグるOwner のセッションの頼み。{ type: 'baguru-owner', kind: 'open', url }。Owner の sw.js からだけ。する事は「予約受付」を出すだけ）
+  D.ownerMessage = function (e) {
+    var d = (e && e.data) || {}, src = '';
+    if (d.type !== 'baguru-owner' || d.kind !== 'open') return false;
+    try { src = decodeURI(e.source && e.source.scriptURL || ''); } catch (x) { return false; }
+    if (!/\/(baguru-owner|バグるOwner)\/sw\.js$/.test(src)) return false;
+    var u; try { u = new URL(d.url); } catch (x) { return false; }
+    var path = ''; try { path = decodeURI(u.pathname); } catch (x) { return false; }
+    if (u.origin !== location.origin || u.hash !== '#requests' || !(path.indexOf('/baguru-yoyaku/') === 0 || path.indexOf('/予約ボード/board/') >= 0)) return false;
+    showRequests();
+    return true;
+  };
+  if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', D.ownerMessage);
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   D.get = get; D.set = set;
