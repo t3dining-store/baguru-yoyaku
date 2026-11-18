@@ -33,8 +33,16 @@
 
   /** 開いたときの画面は必ずテーブル管理（ユーザーの指示）。「更新」のときだけ、見ていた画面に戻る（start.js が控える） */
   function startView() {
+    // 予約のリクエストの通知（バグる Owner のプッシュ通知。2026-11-18 から）は、アドレスの #requests で「予約受付」を開く
+    if (location.hash === '#requests') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} return 'requests'; }
     try { var v = sessionStorage.getItem('baguru.yoyaku.view'); sessionStorage.removeItem('baguru.yoyaku.view'); return v || 'floor'; } catch (e) { return 'floor'; }
   }
+  // 開いたままの予約ボードに通知から戻ったとき（アドレスの # だけが変わる）も「予約受付」へ
+  window.addEventListener('hashchange', function () {
+    if (location.hash !== '#requests') return;
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    if (st.today) D.show('requests'); else st.view = 'requests';
+  });
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function set(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   D.get = get; D.set = set;
