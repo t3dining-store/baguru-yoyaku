@@ -59,8 +59,11 @@
       + '<p class="err" id="conf-err" hidden></p><div class="set-acts"><button type="button" class="btn ember" data-s="conf">基本を保存する</button></div></section>'
       + '<section class="set-sec" id="set-staff">' + staffHtml() + '</section>'
       + '<section class="set-sec"><h2>その他の受け方</h2><p class="muted">次の項目は、会社の Google ドライブのスプレッドシート「※勝手にさわらない＿バグる ネット予約」のタブ「設定」で変えます（変えるとすぐ効きます）。</p>'
-      + '<ul class="set-list"><li>ネット予約を受け付ける（する／しない）</li><li>ネット予約（ホームページ・アプリ）で受ける時刻（平日・土日祝）と、その間隔</li><li>ネット予約の1枠で受ける組数・1組の最大人数</li><li>何日先まで・何時間前まで</li><li>営業時間（スケジュールで灰色にする時間）</li><li>新しいリクエストを知らせるメール</li><li>予約経路の選び方</li></ul>'
+      + '<ul class="set-list"><li>ネット予約を受け付ける（する／しない）</li><li>ネット予約（ホームページ・アプリ）で受ける時刻（平日・土日祝）と、その間隔</li><li>ネット予約の1枠で受ける組数・1組の最大人数</li><li>何日先まで・何時間前まで</li><li>営業時間（スケジュールで灰色にする時間）</li><li>新しいリクエストを知らせるメール・注文を知らせるメール（空なら予約と同じ先）</li><li>予約経路の選び方</li></ul>'
         + '<p class="muted">★定休日と、臨時の営業・お休みは、T3Works のマネージ（⚙ 設定 → 定休日）で変えます。30分ほどで、予約ボード・ホームページ・お客さまのアプリに入ります。</p></section>'
+      + '<section class="set-sec"><h2>メール</h2><p class="set-mail' + D.mailCls() + '" id="set-mail">' + D.mailText() + '</p>'
+      + '<p class="muted">お客さまへの受付・確定・お断りのメールと、お店への知らせのメールで使います（予約・注文1件で2〜3件。お店への知らせの先が2人なら、1通で2件）。'
+      + 'ふつうの Gmail のアカウントは1日100件までで、およそ24時間で戻ります。0件になっても、予約・注文はそのまま受けられます（メールだけ送れない）。残りが' + 20 + '件以下になると、上に帯が出ます。</p></section>'
       + '<section class="set-sec"><h2>この端末</h2><p class="muted">版 ' + esc(st.version || '') + '　最終更新 ' + esc(st.loadedAt ? D.clock(st.loadedAt) : '') + (st.loadMs ? '　読み込み ' + (st.loadMs / 1000).toFixed(1) + '秒' : '') + (st.tickMs ? '　確認 ' + (st.tickMs / 1000).toFixed(1) + '秒' : '') + '</p>'
       + '<div class="set-acts left"><button type="button" class="btn" data-s="logout">ログアウト</button></div></section>';
   }
@@ -249,5 +252,6 @@
   box.addEventListener('touchmove', function (e) { if (T.drag) e.preventDefault(); }, { passive: false });
 
   // 読み直すたびに描き直すと、入れている途中の字が消えるので、この画面は開いたときだけ描く
-  D.views.settings = { render: function () { if (!box.children.length) render(); }, enter: function () { T.edit = false; if (!T.dirty) init(); box.innerHTML = ''; render(); } };
+  D.views.settings = { render: function () { if (!box.children.length) render(); }, enter: function () { T.edit = false; if (!T.dirty) init(); box.innerHTML = ''; render(); D.checkMail(true); },
+    mail: function () { var el = D.$('set-mail'); if (el) { el.className = 'set-mail' + D.mailCls(); el.innerHTML = D.mailText(); } } };   // 今日送れるメールの残り（2026-11-20 から）
 })();

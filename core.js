@@ -132,7 +132,7 @@
     offline: 'つながりません。電波・Wi-Fi を確かめてください。', no_answer: 'つながりません。少し待ってからもう一度。'
   };
   D.errText = function (e) { return ERR[e.code] || ERR.no_answer; };
-  var READS = { load: true, tick: true, customers: true, customer: true };   // 読むだけの口。ほかは直す口
+  var READS = { load: true, tick: true, customers: true, customer: true, mailLeft: true };   // 読むだけの口。ほかは直す口
   D.post = function (payload) {
     payload.pin = st.pin;
     var write = !READS[payload.action];
@@ -198,7 +198,7 @@
       D.refresh();
       checkNew();
       if (D.checkOrders) D.checkOrders();
-      if (firstTime) D.show(st.view);
+      if (firstTime) { D.show(st.view); D.checkMail(true); }
       // 「設定」は開いたときだけ描くので、先に覚えていた中身で描いた分（担当者の名前が入っていない）を描き直す
       if (wasWarm && st.view === 'settings') D.views.settings.enter();
       // 先に出していたあいだに、ほかの日にち・予約リストへ移っていたら、その分も読む
@@ -248,6 +248,7 @@
     D.stopPolling();
     st.timer = setInterval(function () {
       if (document.hidden) return;
+      D.checkMail();   // 10分に1回だけ読む（中で数える）
       st.beat = (st.beat + 1) % 5;
       if (!st.beat && st.today && !st.warm) D.refresh();   // 時刻で変わる表示は、これまでどおり15秒ごとに描き直す
       check();
@@ -393,6 +394,41 @@
     st.pending.forEach(function (r) { if (r.createdAt > st.seen) st.seen = r.createdAt; });
     set(KEY.seen, String(st.seen)); told = 0; checkNew();
   };
+
+  /* ---------- 今日送れるメールの残り（2026-11-20 から。ko-dai さんの指示「残りを出す」） ----------
+     受け口の mailLeft（MailApp の残り。あて先の数）。はじめに読み込んだときと、画面を見ているあいだ10分ごと、「設定」を開いたときに読む。
+     MAIL_WARN 件以下で上に帯を出す（「閉じる」を押すと、その日は0件になるまで出さない）。前の受け口（mailLeft が無い）なら何も出さない */
+  var MAIL_WARN = 20, MAIL_EVERY = 10 * 60000;
+  D.checkMail = function (force) {
+    if (!st.pin || st.mailBusy) return;
+    if (!force && st.mailAt && Date.now() - st.mailAt < MAIL_EVERY) return;
+    st.mailBusy = true;
+    D.post({ action: 'mailLeft' }).then(function (r) {
+      st.mailBusy = false; st.mailAt = Date.now();
+      if (typeof r.left !== 'number') return;
+      st.mailLeft = r.left; st.mailLeftAt = r.at || Date.now();
+      mailBar();
+      if (D.views.settings && D.views.settings.mail) D.views.settings.mail();
+    }).catch(function () { st.mailBusy = false; st.mailAt = Date.now(); });
+  };
+  function mailHideKey() { return D.ymdOf(Date.now()) + ':' + (st.mailLeft === 0 ? 'zero' : 'low'); }
+  function mailBar() {
+    var n = st.mailLeft, bar = $('mailbar');
+    if (typeof n !== 'number' || n > MAIL_WARN || st.mailHide === mailHideKey()) { bar.hidden = true; return; }
+    $('mailbar-text').textContent = n === 0
+      ? '★今日はもうメールを送れません（予約・注文はそのまま受けられます）。およそ24時間で戻ります。お客さまへの確定・お断りのメールは、戻ったら予約の詳しい画面の「メールを送り直す」で送れます'
+      : '★今日送れるメールが、あと ' + n + '件です（予約・注文1件で2〜3件使います）。0件になると、およそ24時間メールを送れません';
+    bar.classList.toggle('is-zero', n === 0);
+    bar.hidden = false;
+  }
+  $('mailbar-x').addEventListener('click', function () { st.mailHide = mailHideKey(); $('mailbar').hidden = true; });
+  /** 「設定」に出す字 */
+  D.mailText = function () {
+    var n = st.mailLeft;
+    if (typeof n !== 'number') return '<span class="muted">読んでいます…（受け口が前の版のときは出ません）</span>';
+    return '今日送れるメールの残り：あと <b>' + n + '</b> 件（' + esc(D.clock(st.mailLeftAt)) + ' に読んだ数）';
+  };
+  D.mailCls = function () { var n = st.mailLeft; return typeof n !== 'number' ? '' : n === 0 ? ' is-zero' : n <= MAIL_WARN ? ' is-low' : ''; };
 
   /* ---------- 画面の切りかえ ---------- */
   var TITLES = { schedule: 'スケジュール', floor: 'テーブル管理', list: '予約リスト', requests: '予約受付', takeout: 'テイクアウト', customers: '顧客台帳', settings: '設定', more: 'その他' };

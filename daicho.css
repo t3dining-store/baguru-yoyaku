@@ -179,6 +179,11 @@ p{margin:0}
 .pop-acts{display:flex; gap:8px}
 /* テイクアウト（takeout.js） */
 .orderbar{background:#1f6f5c}
+.mailbar{background:#8a5a00}   /* 今日送れるメールが少ない（0件のときは .is-zero で赤） */
+.mailbar.is-zero{background:var(--ember)}
+.set-mail b{font-family:var(--en); font-size:20px}
+.set-mail.is-low b{color:#8a5a00}
+.set-mail.is-zero b{color:var(--ember)}
 .tl-seat{display:block; margin:-4px 0 8px auto; min-height:34px}   /* 今日の予約：Order受付で確認した即予約の「席を変える」（2026-11-06 から） */
 .to-tools{display:flex; align-items:center; flex-wrap:wrap; gap:10px 16px; margin-bottom:12px}
 .to-tools .btn{margin-left:auto; text-decoration:none}
