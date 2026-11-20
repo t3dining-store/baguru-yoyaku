@@ -306,7 +306,7 @@
   };
   /** 予約を足す。rid は送り直しで2つにならないための印 */
   D.create = function (data, rid, force) {
-    return D.post({ action: 'save', row: data, rid: rid, force: force === true }).then(function (res) { D.put(res.row); return res.row; }).catch(function (e) {
+    return D.post({ action: 'save', row: data, rid: rid, force: force === true, pushSkip: D.pushSkip }).then(function (res) { D.put(res.row); return res.row; }).catch(function (e) {
       if (e.code === 'table_taken' && e.data && e.data.taken) return D.askTaken(e.data.taken).then(function (y) { return y ? D.create(data, rid, true) : null; });
       throw e;
     });
@@ -394,6 +394,19 @@
     st.pending.forEach(function (r) { if (r.createdAt > st.seen) st.seen = r.createdAt; });
     set(KEY.seen, String(st.seen)); told = 0; checkNew();
   };
+
+  /* ---------- この端末の通知の印（2026-11-20 から） ----------
+     この端末が バグる Owner で注文の通知を受けている端末なら、その通知の endpoint。新しい予約を入れるときに pushSkip で送り、
+     受け口は、入れた端末には「予約が入りました」の通知を送らない（オーナーが自分で入れた予約は、自分には知らせない） */
+  D.pushSkip = '';
+  try {
+    if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+      navigator.serviceWorker.getRegistrations().then(function (list) {
+        var reg = list.filter(function (g) { var u = ''; try { u = decodeURI(((g.active || g.waiting || g.installing) || {}).scriptURL || ''); } catch (e) {} return /\/(baguru-owner|バグるOwner)\/sw\.js$/.test(u); })[0];
+        return reg && reg.pushManager ? reg.pushManager.getSubscription() : null;
+      }).then(function (sub) { if (sub && sub.endpoint) D.pushSkip = sub.endpoint; }).catch(function () {});
+    }
+  } catch (e) {}
 
   /* ---------- 今日送れるメールの残り（2026-11-20 から。ko-dai さんの指示「残りを出す」） ----------
      受け口の mailLeft（MailApp の残り。あて先の数）。はじめに読み込んだときと、画面を見ているあいだ10分ごと、「設定」を開いたときに読む。
