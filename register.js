@@ -180,7 +180,7 @@
     var now = D.nowMin(), nextQ = D.hm(Math.min(23 * 60 + 50, D.nextStep(now)));
     f = r ? {
       id: r.id, expect: r.updatedAt, date: r.date, start: r.start, people: r.people, keep: r.keep, tables: r.tables.slice(),
-      name: r.name, kana: r.kana, useKana: !!r.kana, tel: r.tel, email: r.email, route: r.route, keywords: r.keywords.slice(), memo: r.memo,
+      name: r.name, kana: r.kana, useKana: !!r.kana || hasKanji(r.name), tel: r.tel, email: r.email, route: r.route, keywords: r.keywords.slice(), memo: r.memo,
       dessert: r.dessert === true, plateMsg: r.plateMsg || '', status: r.status, cid: r.cid, cust: r.cust, no: r.no, staff: r.staff || ''
     } : {
       date: o.date || st.date || st.today, start: o.start || (o.date && o.date !== st.today ? '18:00' : nextQ), people: o.people || 0,
@@ -284,7 +284,12 @@
   }
 
   /* お名前：苗字と名前の2欄（カタカナで入れる）。保存は半角の空白でつなぐ。ひらがなで入れたらカタカナにする。
-     ネット予約の予約は name が漢字、kana がカタカナなので、この2欄は kana を直す（f.useKana）。name はそのまま */
+     ネット予約の予約は name が漢字、kana がカタカナなので、この2欄は kana を直す（f.useKana）。name はそのまま
+     ★フリガナの無い予約でも、お名前が漢字なら（ホームページの予約など）、2欄はフリガナの欄にする（2026-11-25 から。ko-dai さんが「両方やる」を選んだ。
+       前は漢字のお名前が2欄に入り、カタカナに打ちかえると漢字が消えていた）。2欄が空のままなら、漢字のお名前のまま保存できる */
+  function kanaOnly(s) { return /^[\u3041-\u3096\u30a1-\u30f6\u30fc\s\u3000]*$/.test(s || ''); }
+  function hasKanji(s) { return !!(s && String(s).trim()) && !kanaOnly(s); }   // かな・カタカナのほか（漢字・英字など）が入っている
+  function keepName() { return f.useKana && hasKanji(f.name); }   // 漢字のお名前を残して、2欄はフリガナ
   function setParts() {
     var a = D.kata(f.useKana ? f.kana : f.name).trim().split(/[\s\u3000]+/);
     f.sei = a[0] || ''; f.mei = a.slice(1).join(' ');
@@ -298,10 +303,11 @@
     if (f.route && routes.indexOf(f.route) < 0) routes.push(f.route);
     var stats = f.id ? D.STATUS_LIST() : [ST.WAIT, ST.IN];
     frame('<h3 class="q">お名前とお電話番号を教えてください</h3>'
-      + '<div class="fg"><div><label for="r-sei">苗字（カタカナ）' + (f.route === '直接来店' ? '' : '<span class="need">必須</span>') + '</label><input type="text" id="r-sei" maxlength="20" value="' + esc(f.sei) + '" placeholder="例：ヤマダ" autocomplete="off"></div>'
+      + '<div class="fg"><div><label for="r-sei">苗字（カタカナ）' + (f.route === '直接来店' || keepName() ? '' : '<span class="need">必須</span>') + '</label><input type="text" id="r-sei" maxlength="20" value="' + esc(f.sei) + '" placeholder="例：ヤマダ" autocomplete="off"></div>'
       + '<div><label for="r-mei">名前（カタカナ）</label><input type="text" id="r-mei" maxlength="20" value="' + esc(f.mei) + '" placeholder="例：タロウ" autocomplete="off"></div>'
       + '<div><label for="r-tel">電話番号</label><input type="tel" id="r-tel" maxlength="20" inputmode="tel" value="' + esc(f.tel) + '" autocomplete="off"></div>'
       + '</div>'
+      + (keepName() ? '<p class="muted r-kanji">漢字のお名前：<b>' + esc(f.name) + '</b> 様（そのまま残ります）。上の2欄にフリガナを入れると、予約ボードと Order受付にカタカナで出ます</p>' : '')
       + '<div id="r-cust">' + custBox() + '</div>'
       + '<p class="lbl">キーワード</p><div class="kgrid">' + kws + '</div>'
       + '<div class="dessert"><label class="chk"><input type="checkbox" id="r-dessert"' + (f.dessert ? ' checked' : '') + '>デザートプレート<small>要予約・税込1,100円</small></label>'
@@ -372,7 +378,7 @@
       + (warn.length ? '<ul class="warns">' + warn.map(function (w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>' : '')
       + '<dl class="conf">' + row('日時', esc(D.jp(f.date) + ' ' + f.start + '〜' + D.hm(D.toMin(f.start) + f.keep)) + '（確保 ' + f.keep + '分）')
       + row('人数', f.people + '名') + row('テーブル', f.tables.length ? esc(D.tableNames(f.tables)) : '未割り当て')
-      + row('お名前', esc(fullName() || '（なし）') + (f.useKana && f.name && f.name !== fullName() ? '（' + esc(f.name) + '）' : '')) + row('電話番号', esc(f.tel)) + row('メール', esc(f.email))
+      + row('お名前', esc(fullName() || f.name || '（なし）') + (f.useKana && f.name && fullName() && f.name !== fullName() ? '（' + esc(f.name) + '）' : '')) + row('電話番号', esc(f.tel)) + row('メール', esc(f.email))
       + row('キーワード', esc(f.keywords.join('・')))
       + row('デザートプレート', f.dessert ? '注文あり（税込1,100円）' + (f.plateMsg ? '<br>メッセージ「' + esc(f.plateMsg) + '」' : '<br>メッセージなし') : '') + row('予約経路', esc(f.route)) + row('担当者', needStaff() ? esc(f.staff) : '') + row('状態', esc(f.status)) + row('メモ', esc(f.memo)) + '</dl>'
       + '<p class="err" id="r-err" hidden></p>',
@@ -430,7 +436,7 @@
     if (ds.pick) {
       var c = found[Number(ds.pick)];
       f.cid = c.cid; f.cust = c; f.noCust = false; found = [];
-      if (!f.sei) { f.name = c.name; f.kana = c.kana; f.useKana = !!c.kana; setParts(); }
+      if (!f.sei) { f.name = c.name; f.kana = c.kana; f.useKana = !!c.kana || hasKanji(c.name); setParts(); }
       if (!f.tel) f.tel = c.tel;
       return step3();
     }
@@ -445,7 +451,8 @@
       case 'uncust': f.cid = ''; f.cust = null; f.noCust = true; return step3();
       case 'confirm':
         if (!f.people) { go(1); return; }
-        if (!f.sei && f.route !== '直接来店') return showErr('苗字を入れてください。');
+        if (!f.sei && f.route !== '直接来店' && !(keepName() && !f.mei)) return showErr('苗字を入れてください。');
+        if (f.useKana && !kanaOnly(f.sei + f.mei)) return showErr('苗字・名前は、カタカナで入れてください（漢字のお名前はそのまま残ります）。');
         if (!f.id && needStaff() && (st.conf.staff || []).length + (st.conf.parttime || []).length && !f.staff) return showErr('担当者を選んでください。');
         if (f.tel && !/^0\d{9,10}$/.test(f.tel.replace(/[^\d]/g, ''))) return showErr('電話番号の形が違います（例：090-1234-5678）。');
         return go(4);
