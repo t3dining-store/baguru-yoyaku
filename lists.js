@@ -140,7 +140,8 @@
     else if (!C.list.length) h += '<p class="empty">見つかりません。</p>';
     else h += '<div class="ctable"><div class="ch"><span>顧客番号</span><span>お名前</span><span>電話番号</span><span>来店</span><span>前回</span></div>'
       + C.list.map(function (c) {
-        return '<button type="button" class="cr" data-cid="' + esc(c.cid) + '"><span>' + esc(c.cid) + '</span><span><b>' + esc(c.name) + '</b>' + (c.caution ? '<i class="ic ic-warn">！</i>' : '') + (c.kana ? '<small>' + esc(c.kana) + '</small>' : '') + '</span>'
+        var kn = D.kanaName(c.kana);   // フリガナを先に（2026-11-25 から）
+        return '<button type="button" class="cr" data-cid="' + esc(c.cid) + '"><span>' + esc(c.cid) + '</span><span><b>' + esc(kn || c.name) + '</b>' + (c.caution ? '<i class="ic ic-warn">！</i>' : '') + (kn && c.name && c.name !== kn ? '<small>' + esc(c.name) + '</small>' : '') + '</span>'
           + '<span>' + esc(c.tel) + '</span><span>' + c.visits + '回</span><span>' + esc(c.last ? D.md(c.last) : '－') + '</span></button>';
       }).join('') + '</div>';
     var had = document.activeElement && document.activeElement.id === 'c-q', pos = had ? document.activeElement.selectionStart : 0;

@@ -107,7 +107,9 @@
     return list.slice().sort(function (a, b) { return c.compare(key(a), key(b)); });
   };
   /** 画面に出す名前：カタカナのフルネームがあれば、それを出す（ネット予約は kana にカタカナ、name に漢字が入る） */
-  D.name = function (r) { return D.kata(r.kana).trim() || r.name || (r.route === '直接来店' ? '直接来店' : '（お名前なし）'); };
+  /** お客様のお名前は、フリガナ（カタカナ・姓と名のあいだに空白）を先に出す（2026-11-25 ko-dai さんの指示「予約ボードや受付アプリではお客様名をカタカナで姓名の間にスペースを入れて表示するようにしてください」） */
+  D.kanaName = function (kana) { return D.kata(kana).replace(/[\s\u3000]+/g, ' ').trim(); };
+  D.name = function (r) { return D.kanaName(r.kana) || r.name || (r.route === '直接来店' ? '直接来店' : '（お名前なし）'); };
   D.isPhone = function () { return window.matchMedia('(max-width: 760px)').matches; };
   /** その席・その時間にかかる、ほかの予約 */
   /** 即予約（15分以内に来店。2026-11-05 から）。受け口がキーワード「即予約」を付ける */

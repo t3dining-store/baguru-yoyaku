@@ -322,7 +322,8 @@
     }
     if (found.length) {
       h += '<div class="custfound"><p>顧客台帳に ' + found.length + '件 あります</p>' + found.slice(0, 5).map(function (c, i) {
-        return '<div class="cf"><span><b>' + esc(c.name) + '</b>' + (c.kana ? '（' + esc(c.kana) + '）' : '') + '　' + esc(c.tel) + '　来店 ' + c.visits + '回' + (c.last ? '・前回 ' + esc(D.md(c.last)) : '') + '</span>'
+        var kn = D.kanaName(c.kana);   // フリガナを先に（2026-11-25 から）
+        return '<div class="cf"><span><b>' + esc(kn || c.name) + '</b>' + (kn && c.name && c.name !== kn ? '（' + esc(c.name) + '）' : '') + '　' + esc(c.tel) + '　来店 ' + c.visits + '回' + (c.last ? '・前回 ' + esc(D.md(c.last)) : '') + '</span>'
           + '<button type="button" class="btn small" data-pick="' + i + '">選ぶ</button></div>';
       }).join('') + '</div>';
     }
