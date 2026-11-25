@@ -148,7 +148,7 @@
         return;
       }
       if (e.code === 'table_taken' && e.data && e.data.taken) {   // 2台が同じ空きを見ていたとき。受け口の最新の台帳で分かった
-        var list = e.data.taken.map(function (x) { return x.tables.join('・') + '：' + x.start + '〜 ' + x.name + ' 様'; }).join('、');
+        var list = e.data.taken.map(function (x) { return x.tables.join('・') + '：' + x.start + '〜 ' + (D.guestName(x) || '直接来店') + ' 様'; }).join('、');
         D.load();
         D.ask({ title: '選んだ席に、先に予約が入っていました', text: list + '。同じ席のまま承認しますか？ 席を選び直すときは「やめる」を押してください。', ok: 'このまま承認する' })
           .then(function (yes) { if (yes) decide(r, decision, tables, keep, true); });

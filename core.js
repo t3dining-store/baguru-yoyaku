@@ -108,8 +108,13 @@
   };
   /** 画面に出す名前：カタカナのフルネームがあれば、それを出す（ネット予約は kana にカタカナ、name に漢字が入る） */
   /** お客様のお名前は、フリガナ（カタカナ・姓と名のあいだに空白）を先に出す（2026-11-25 ko-dai さんの指示「予約ボードや受付アプリではお客様名をカタカナで姓名の間にスペースを入れて表示するようにしてください」） */
-  D.kanaName = function (kana) { return D.kata(kana).replace(/[\s\u3000]+/g, ' ').trim(); };
-  D.name = function (r) { return D.kanaName(r.kana) || r.name || (r.route === '直接来店' ? '直接来店' : '（お名前なし）'); };
+  D.kanaName = function (kana) { return D.kata(String(kana || '').normalize('NFKC')).replace(/[\s\u3000]+/g, ' ').trim(); };
+  /* お客様のお名前は、どこでもカタカナ（セイ メイ。あいだは半角の空白）で出す（2026-11-25 ko-dai さんの指示「アプリ、ホームページ、店舗で直接入力全ての場合で
+     フルネームがカタカナで姓名の間にスペースが入って表示されるようにしてください」）。フリガナ（kana）が先。無ければ、かなだけのお名前はカタカナにする。
+     漢字のお名前しか無いとき（フリガナを足す前のホームページの予約など）は、そのまま出す */
+  D.kanaOnly = function (s) { return /^[\u3041-\u3096\u30a1-\u30fa\u30fc\uff66-\uff9f\s\u3000]+$/.test(String(s || '').trim()); };
+  D.guestName = function (o) { return o ? D.kanaName(o.kana) || (D.kanaOnly(o.name) ? D.kanaName(o.name) : String(o.name || '').trim()) : ''; };
+  D.name = function (r) { return D.guestName(r) || (r.route === '直接来店' ? '直接来店' : '（お名前なし）'); };
   D.isPhone = function () { return window.matchMedia('(max-width: 760px)').matches; };
   /** その席・その時間にかかる、ほかの予約 */
   /** 即予約（15分以内に来店。2026-11-05 から）。受け口がキーワード「即予約」を付ける */
@@ -281,7 +286,7 @@
   /** 受け口が、同じ席に先に入った予約を見つけたとき（2台・即予約と取り合ったとき。2026-11-05 から）。重ねて入れるなら true */
   D.askTaken = function (taken) {
     D.load();
-    var list = taken.map(function (x) { return x.tables.join('・') + '：' + x.start + '〜 ' + (x.name || '直接来店') + ' 様'; }).join('、');
+    var list = taken.map(function (x) { return x.tables.join('・') + '：' + x.start + '〜 ' + (D.guestName(x) || '直接来店') + ' 様'; }).join('、');
     return D.ask({ title: '同じ席に、先に予約が入っていました', text: list + '。このまま重ねて入れますか？ 席を選び直すときは「やめる」を押してください。', ok: 'このまま入れる' });
   };
   /** 予約を直す。force … 席が重なるのを分かったうえで送る（画面で確かめたあと） */

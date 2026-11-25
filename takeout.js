@@ -74,7 +74,7 @@
       + '<span class="to-kind">' + esc(KIND[o.kind] || '') + '</span><span class="to-route">' + esc(o.route || 'アプリ') + '</span>'
       + '<span class="to-st">' + esc(statusLabel(o, now)) + '</span></div>'
       + '<p class="to-when"><b>' + esc(whenText(o)) + '</b> ' + (o.kind === 'delivery' ? 'お届け' : '受け取り') + (o.status === 'request' ? '（ご希望）' : '') + ' <span>' + untilText(o, now) + '</span></p>'
-      + '<p class="to-who"><b>' + esc(D.kanaName(o.kana) || o.name || '（お名前なし）') + ' 様</b>' + D.telLink(o.tel) + '</p>'   // フリガナを先に（2026-11-25 から。受け口 2026-11-25a から kana が来る）
+      + '<p class="to-who"><b>' + esc(D.guestName(o) || '（お名前なし）') + ' 様</b>' + D.telLink(o.tel) + '</p>'   // フリガナを先に（2026-11-25 から。受け口 2026-11-25a から kana が来る）
       + (o.kind === 'delivery' && o.address ? '<p class="to-addr">' + esc(o.address + (o.address2 ? ' ' + o.address2 : '')) + '</p>' : '')
       + '<ul class="to-lines">' + (o.lines || []).map(lineHtml).join('') + '</ul>'
       + '<p class="to-sum"><span>' + esc(mealsOf(o)) + fee + '</span><b>' + yen(o.total + (o.fee || 0)) + '</b></p>'
@@ -130,7 +130,7 @@
   D.orderTime = function (o) { return D.clock(msOf(o)); };
   D.orderLine = function (o) {
     return '<button type="button" class="tl tl-order k-' + esc(o.kind) + '" data-order="' + esc(o.id) + '"><span class="tl-head"><span class="to-kind">' + esc(KIND[o.kind] || 'テイクアウト') + '</span><span class="to-st">' + esc(statusLabel(o, Date.now())) + '</span></span>'
-      + '<span class="tl-name">' + esc(D.kanaName(o.kana) || o.name || '（お名前なし）') + ' 様' + (o.meals ? '　' + esc(mealsOf(o)) : '') + '</span>'
+      + '<span class="tl-name">' + esc(D.guestName(o) || '（お名前なし）') + ' 様' + (o.meals ? '　' + esc(mealsOf(o)) : '') + '</span>'
       + '<span class="tl-sub">' + esc(o.asap ? '今から受け取る（' + D.orderTime(o) + '頃）' : D.orderTime(o) + ' ' + (o.kind === 'delivery' ? 'お届け' : '受け取り')) + '　No.' + esc(noOf(o)) + '</span></button>';   // 「今から受け取る」のあとに「受け取り」を重ねない
   };
   /** 注文のところを開く（予約ボードでは見るだけ） */

@@ -303,11 +303,11 @@
     if (f.route && routes.indexOf(f.route) < 0) routes.push(f.route);
     var stats = f.id ? D.STATUS_LIST() : [ST.WAIT, ST.IN];
     frame('<h3 class="q">お名前とお電話番号を教えてください</h3>'
-      + '<div class="fg"><div><label for="r-sei">苗字（カタカナ）' + (f.route === '直接来店' || keepName() ? '' : '<span class="need">必須</span>') + '</label><input type="text" id="r-sei" maxlength="20" value="' + esc(f.sei) + '" placeholder="例：ヤマダ" autocomplete="off"></div>'
-      + '<div><label for="r-mei">名前（カタカナ）</label><input type="text" id="r-mei" maxlength="20" value="' + esc(f.mei) + '" placeholder="例：タロウ" autocomplete="off"></div>'
+      + '<div class="fg"><div><label for="r-sei">フリガナ（セイ）' + (f.route === '直接来店' || keepName() ? '' : '<span class="need">必須</span>') + '</label><input type="text" id="r-sei" maxlength="20" value="' + esc(f.sei) + '" placeholder="例：ヤマダ" autocomplete="off"></div>'
+      + '<div><label for="r-mei">フリガナ（メイ）' + (f.route === '直接来店' || keepName() ? '' : '<span class="need">必須</span>') + '</label><input type="text" id="r-mei" maxlength="20" value="' + esc(f.mei) + '" placeholder="例：タロウ" autocomplete="off"></div>'
       + '<div><label for="r-tel">電話番号</label><input type="tel" id="r-tel" maxlength="20" inputmode="tel" value="' + esc(f.tel) + '" autocomplete="off"></div>'
       + '</div>'
-      + (keepName() ? '<p class="muted r-kanji">漢字のお名前：<b>' + esc(f.name) + '</b> 様（そのまま残ります）。上の2欄にフリガナを入れると、予約ボードと Order受付にカタカナで出ます</p>' : '')
+      + (keepName() ? '<p class="muted r-kanji">漢字のお名前：<b>' + esc(f.name) + '</b> 様（そのまま残ります）。上の2欄にフリガナを入れると、予約ボードと Order受付にカタカナで出ます（空のままでも保存できます）</p>' : '')
       + '<div id="r-cust">' + custBox() + '</div>'
       + '<p class="lbl">キーワード</p><div class="kgrid">' + kws + '</div>'
       + '<div class="dessert"><label class="chk"><input type="checkbox" id="r-dessert"' + (f.dessert ? ' checked' : '') + '>デザートプレート<small>要予約・税込1,100円</small></label>'
@@ -328,7 +328,7 @@
     }
     if (found.length) {
       h += '<div class="custfound"><p>顧客台帳に ' + found.length + '件 あります</p>' + found.slice(0, 5).map(function (c, i) {
-        var kn = D.kanaName(c.kana);   // フリガナを先に（2026-11-25 から）
+        var kn = D.guestName(c);   // フリガナを先に（2026-11-25 から。かなだけのお名前もカタカナに）
         return '<div class="cf"><span><b>' + esc(kn || c.name) + '</b>' + (kn && c.name && c.name !== kn ? '（' + esc(c.name) + '）' : '') + '　' + esc(c.tel) + '　来店 ' + c.visits + '回' + (c.last ? '・前回 ' + esc(D.md(c.last)) : '') + '</span>'
           + '<button type="button" class="btn small" data-pick="' + i + '">選ぶ</button></div>';
       }).join('') + '</div>';
@@ -337,8 +337,9 @@
   }
   function readStep3() {
     if (step !== 3) return;
-    f.sei = D.kata($('r-sei').value.trim()); f.mei = D.kata($('r-mei').value.trim());
-    if (f.useKana) f.kana = fullName(); else f.name = fullName();
+    f.sei = D.kata($('r-sei').value.normalize('NFKC').trim()); f.mei = D.kata($('r-mei').value.normalize('NFKC').trim());   // 半角カナも全角に（2026-11-25 から）
+    f.kana = fullName();                       // 2026-11-25 から、お店で入れた予約も kana を持つ（Order受付・顧客台帳もカタカナで出せる）
+    if (!hasKanji(f.name)) f.name = fullName();   // 漢字のお名前（ネット予約）は残す。ほかは name もカタカナ
     f.tel = $('r-tel').value.trim();
     f.route = $('r-route').value; f.status = $('r-status').value; f.memo = $('r-memo').value.trim();
     f.dessert = $('r-dessert').checked; f.plateMsg = f.dessert && $('r-plate') ? $('r-plate').value.trim() : f.dessert ? f.plateMsg : '';
@@ -451,8 +452,10 @@
       case 'uncust': f.cid = ''; f.cust = null; f.noCust = true; return step3();
       case 'confirm':
         if (!f.people) { go(1); return; }
-        if (!f.sei && f.route !== '直接来店' && !(keepName() && !f.mei)) return showErr('苗字を入れてください。');
-        if (f.useKana && !kanaOnly(f.sei + f.mei)) return showErr('苗字・名前は、カタカナで入れてください（漢字のお名前はそのまま残ります）。');
+        var walk = f.route === '直接来店', none = !f.sei && !f.mei;
+        if (none && !walk && !keepName()) return showErr('フリガナ（セイ）と（メイ）を入れてください。');
+        if (!none && !walk && (!f.sei || !f.mei)) return showErr('フリガナは、セイとメイの両方を入れてください。');
+        if (!none && !kanaOnly(f.sei + f.mei)) return showErr('フリガナは、カタカナで入れてください' + (keepName() ? '（漢字のお名前はそのまま残ります）。' : '。'));
         if (!f.id && needStaff() && (st.conf.staff || []).length + (st.conf.parttime || []).length && !f.staff) return showErr('担当者を選んでください。');
         if (f.tel && !/^0\d{9,10}$/.test(f.tel.replace(/[^\d]/g, ''))) return showErr('電話番号の形が違います（例：090-1234-5678）。');
         return go(4);
