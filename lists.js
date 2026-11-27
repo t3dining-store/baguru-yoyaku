@@ -50,13 +50,21 @@
     });
     var ppl = rows.reduce(function (n, r) { return n + (D.HIDDEN[r.status] ? 0 : r.people); }, 0);
     var btn = function (p, label) { return '<button type="button" class="seg' + (L.preset === p ? ' on' : '') + '" data-pre="' + p + '">' + label + '</button>'; };
-    var h = '<div class="lst-tools"><div class="segs">' + btn('today', '今日') + btn('tomorrow', '明日') + btn('week', '今週') + btn('next', '来週') + btn('month', '30日') + btn('custom', '期間を選ぶ') + '</div>'
-      + (L.preset === 'custom' ? '<div class="lst-range"><input type="date" id="l-from" value="' + rg[0] + '">〜<input type="date" id="l-to" value="' + rg[1] + '"></div>' : '')
-      + '<label class="chk"><input type="checkbox" id="l-nocxl"' + (L.noCxl ? ' checked' : '') + '>キャンセルを除く</label>'
-      + '<label class="chk"><input type="checkbox" id="l-nowalk"' + (L.noWalk ? ' checked' : '') + '>直接来店を除く</label>'
-      + '<select id="l-status"><option value="">全ての状態</option>' + D.STATUS_LIST().map(function (s) { return '<option' + (L.status === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>'
-      + '<span class="lst-count"><b>' + rows.length + '</b>件・<b>' + ppl + '</b>名</span></div>';
-    var last = '';
+    /* ★上の段（期間のボタン・期間の欄・チェック・状態）は、期間の選び方を変えたときだけ作り直す（2026-11-28 から。ko-dai さんの指示
+       「期間を指定して予約を探す時に、カレンダーが開いても数秒で勝手に閉じてしまうので直してください／期間を選択して確定のチェックマークを押すまで閉じないようにしてください」）。
+       前は、読み直し（3秒ごとに変わったかを聞き、変わっていたら・15秒ごとに描き直す）のたびに段ごと作り直していて、開いているカレンダーの欄が入れかわって閉じていた。
+       読み直しでは、件数と下の一覧だけを入れかえる */
+    var box = $('v-list'), tools = box.querySelector('.lst-tools');
+    if (!tools || tools.dataset.key !== L.preset) {
+      box.innerHTML = '<div class="lst-tools" data-key="' + L.preset + '"><div class="segs">' + btn('today', '今日') + btn('tomorrow', '明日') + btn('week', '今週') + btn('next', '来週') + btn('month', '30日') + btn('custom', '期間を選ぶ') + '</div>'
+        + (L.preset === 'custom' ? '<div class="lst-range"><input type="date" id="l-from" value="' + rg[0] + '">〜<input type="date" id="l-to" value="' + rg[1] + '"></div>' : '')
+        + '<label class="chk"><input type="checkbox" id="l-nocxl"' + (L.noCxl ? ' checked' : '') + '>キャンセルを除く</label>'
+        + '<label class="chk"><input type="checkbox" id="l-nowalk"' + (L.noWalk ? ' checked' : '') + '>直接来店を除く</label>'
+        + '<select id="l-status"><option value="">全ての状態</option>' + D.STATUS_LIST().map(function (s) { return '<option' + (L.status === s ? ' selected' : '') + '>' + esc(s) + '</option>'; }).join('') + '</select>'
+        + '<span class="lst-count"></span></div><div class="lst-body"></div>';
+    }
+    box.querySelector('.lst-count').innerHTML = '<b>' + rows.length + '</b>件・<b>' + ppl + '</b>名';
+    var last = '', h = '';
     h += rows.length ? '<div class="lst">' + rows.map(function (r) {
       var head = r.date !== last ? '<h3 class="lst-day">' + esc(D.jp(r.date)) + '</h3>' : '';
       last = r.date;
@@ -64,7 +72,7 @@
     }).join('') + '</div>' : '<p class="empty">この期間の予約はありません。</p>';
     var lr = st.loadedRange;
     if (lr && (rg[0] < lr.from || rg[1] > lr.to)) h += '<p class="muted center">読み込んでいます…</p>';
-    $('v-list').innerHTML = h;
+    box.querySelector('.lst-body').innerHTML = h;
   }
   $('v-list').addEventListener('click', function (e) {
     var p = e.target.closest('[data-pre]');
@@ -79,7 +87,7 @@
     if (id === 'l-status') L.status = e.target.value;
     if (id === 'l-from' || id === 'l-to') {
       L.from = $('l-from').value; L.to = $('l-to').value;
-      if (L.to < L.from) L.to = L.from;
+      if (L.from && L.to < L.from) { L.to = L.from; $('l-to').value = L.to; }   // 欄は作り直さない（開いているカレンダーを閉じない。2026-11-28 から）
       renderList(); return D.load();
     }
     renderList();
